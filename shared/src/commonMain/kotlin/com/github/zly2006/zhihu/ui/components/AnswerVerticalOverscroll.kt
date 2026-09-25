@@ -81,7 +81,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
-import kotlin.math.tanh
 
 /**
  * 上下 overscroll 切换回答容器。
@@ -208,13 +207,9 @@ fun AnswerVerticalOverscroll(
                     rawDragAccumulator = 0f
                     hasTriggeredHaptic = false
                     if (!didNavigate) {
-                        overscrollOffset.animateTo(
-                            0f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMedium,
-                            ),
-                        )
+                        // 未达阈值时平滑归位。用无过冲的弹簧而不是 Bouncy：
+                        // 回弹过冲会在手指刚离开时产生一个反向突跳，是「切换很生硬」的主要来源。
+                        overscrollOffset.animateTo(0f, animationSpec = overscrollSettleSpec())
                     }
                     return available
                 }
@@ -301,13 +296,7 @@ fun AnswerVerticalOverscroll(
                                 hasTriggeredHaptic = false
                                 if (!didNavigate) {
                                     coroutineScope.launch {
-                                        overscrollOffset.animateTo(
-                                            0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMedium,
-                                            ),
-                                        )
+                                        overscrollOffset.animateTo(0f, animationSpec = overscrollSettleSpec())
                                     }
                                 }
                             }
@@ -468,11 +457,30 @@ private const val MAX_OVERSCROLL_DP = 200f
 private const val TRIGGER_THRESHOLD_DP = 80f
 private const val DAMPING_FACTOR = 1.2f
 
+/**
+ * 未触发切换时的归位动画。
+ *
+ * 用 [Spring.DampingRatioNoBouncy]：位移单调回到 0，不过冲、不回弹。
+ * 过冲会让内容先越过原位再弹回，视觉上就是一次明显的「跳」。
+ */
+internal fun overscrollSettleSpec() = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow,
+)
+
+/**
+ * 把手指位移映射为内容偏移。
+ *
+ * 用**线性**阻尼（固定比例跟手 + 上限截断），而不是此前基于 `tanh` 的曲线：
+ * `tanh` 在阈值附近斜率趋近于 0，同样的手指位移换来的偏移越来越小，
+ * 表现为「越过某个点后突然变粘」，是切换手感生硬的一部分。
+ * 线性映射让整段拖动保持一致的跟手比例。
+ */
 internal fun dampedOverscrollOffset(
     rawDelta: Float,
     maxOverscrollPx: Float,
     dampingFactor: Float,
 ): Float {
-    val sign = if (rawDelta >= 0) 1f else -1f
-    return sign * maxOverscrollPx * tanh(abs(rawDelta) / (maxOverscrollPx * dampingFactor))
+    val ratio = 1f / dampingFactor.coerceAtLeast(0.01f)
+    return (rawDelta * ratio).coerceIn(-maxOverscrollPx, maxOverscrollPx)
 }

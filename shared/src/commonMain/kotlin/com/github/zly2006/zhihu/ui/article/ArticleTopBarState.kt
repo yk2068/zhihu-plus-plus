@@ -18,7 +18,6 @@
 package com.github.zly2006.zhihu.ui.article
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,21 +25,30 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlin.math.abs
 
 @Stable
 internal class ArticleTopBarState {
     val offset = Animatable(0f)
     var heightPx by mutableFloatStateOf(0f)
     internal var previousScrollValue by mutableIntStateOf(0)
-    internal var isSnapping by mutableStateOf(false)
 }
 
+/**
+ * 顶栏位移跟随滚动位置。
+ *
+ * 手感约定：**不做二值吸附**。
+ *
+ * 此前的实现会在手指松开后按「偏移是否过半」把顶栏 `animateTo` 到全隐或全显，
+ * 这一步在快速滑动时表现为突然跳一下；手指停在中间时也会被强行吸走。
+ * 现在偏移只由滚动位置决定：滑到哪就是哪，回滚时按同样规律连续恢复。
+ *
+ * 唯一保留的边界处理是 [ScrollState.maxValue] 附近：接近底部时顶栏回到完全可见，
+ * 避免内容到底后顶栏停在半隐状态。
+ */
 @Composable
 internal fun rememberArticleTopBarState(
     scrollState: ScrollState,
@@ -53,44 +61,20 @@ internal fun rememberArticleTopBarState(
     }
     LaunchedEffect(scrollState, autoHide) {
         snapshotFlow { scrollState.value }.collectLatest { currentScroll ->
-            if (!state.isSnapping) {
-                val delta = currentScroll - state.previousScrollValue
-                if (currentScroll == 0) {
-                    state.offset.snapTo(0f)
-                } else if (autoHide && state.heightPx > 0f) {
-                    val deltaBasedOffset = (state.offset.value - delta).coerceIn(-state.heightPx, 0f)
-                    val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
-                    if (distanceFromBottom < state.heightPx.toInt()) {
-                        val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-state.heightPx, 0f)
-                        state.offset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
-                    } else {
-                        state.offset.snapTo(deltaBasedOffset)
-                    }
+            val delta = currentScroll - state.previousScrollValue
+            if (currentScroll == 0) {
+                state.offset.snapTo(0f)
+            } else if (autoHide && state.heightPx > 0f) {
+                val deltaBasedOffset = (state.offset.value - delta).coerceIn(-state.heightPx, 0f)
+                val distanceFromBottom = (scrollState.maxValue - currentScroll).coerceAtLeast(0)
+                if (distanceFromBottom < state.heightPx.toInt()) {
+                    val distanceBasedOffset = (-distanceFromBottom.toFloat()).coerceIn(-state.heightPx, 0f)
+                    state.offset.snapTo(maxOf(distanceBasedOffset, deltaBasedOffset))
+                } else {
+                    state.offset.snapTo(deltaBasedOffset)
                 }
             }
             state.previousScrollValue = currentScroll
-        }
-    }
-
-    LaunchedEffect(scrollState, autoHide) {
-        snapshotFlow { scrollState.isScrollInProgress }.collectLatest { isScrollInProgress ->
-            if (isScrollInProgress) return@collectLatest
-            val target = if (autoHide && state.heightPx > 0f) {
-                if (abs(state.offset.value) > state.heightPx / 2) -state.heightPx else 0f
-            } else {
-                state.offset.value
-            }
-            if (target != state.offset.value) {
-                try {
-                    state.isSnapping = true
-                    // This collector observes ScrollState.isScrollInProgress. Mutating that same
-                    // ScrollState while settling would restart the flow and trap input dispatch
-                    // in a cancellation loop, so snapping is limited to the app bar itself.
-                    state.offset.animateTo(target, tween(150))
-                } finally {
-                    state.isSnapping = false
-                }
-            }
         }
     }
 
