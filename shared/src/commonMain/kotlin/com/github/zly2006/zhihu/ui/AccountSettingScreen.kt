@@ -501,10 +501,9 @@ fun AccountSettingScreen(
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                 )
 
-                val (developerHidden, _) = rememberGroupHidden(HideableSettingGroup.DEVELOPER)
-                AnimatedVisibility(isDeveloper && !developerHidden) {
+                AnimatedVisibility(isDeveloper) {
                     SettingItem(
-                        title = { Text(HideableSettingGroup.DEVELOPER.title) },
+                        title = { Text("开发者选项") },
                         icon = { Icon(Icons.Default.Code, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_DEVELOPER_TAG),
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },

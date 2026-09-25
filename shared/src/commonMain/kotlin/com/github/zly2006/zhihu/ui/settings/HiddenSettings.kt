@@ -61,11 +61,6 @@ enum class HideableSettingGroup(
         title = "推荐系统与内容过滤",
         description = "推荐、智能过滤、关键词屏蔽等",
     ),
-    DEVELOPER(
-        preferenceKey = "hideSettingDeveloper",
-        title = "开发者选项",
-        description = "调试、签名、Cookie 和实验入口",
-    ),
     ;
 
     companion object {
