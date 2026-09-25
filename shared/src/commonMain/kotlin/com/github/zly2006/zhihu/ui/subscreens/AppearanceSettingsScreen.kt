@@ -105,6 +105,7 @@ import com.github.zly2006.zhihu.theme.ThemeMode
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
+import com.github.zly2006.zhihu.ui.QUESTION_TITLE_SNAP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.ColorPickerDialog
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
@@ -874,6 +875,22 @@ fun AppearanceSettingsScreen(
                     settingKey = "titleAutoHide",
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("titleAutoHide"),
+                )
+
+                val isQuestionTitleSnap = remember {
+                    mutableStateOf(settings.getBoolean(QUESTION_TITLE_SNAP_PREFERENCE_KEY, false))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("问题标题自动吸附") },
+                    description = { Text("问题页下划超过一屏的 160dp 后，把问题标题吸附到顶部标题栏。默认关闭。") },
+                    checked = isQuestionTitleSnap.value,
+                    onCheckedChange = {
+                        isQuestionTitleSnap.value = it
+                        settings.putBoolean(QUESTION_TITLE_SNAP_PREFERENCE_KEY, it)
+                    },
+                    settingKey = QUESTION_TITLE_SNAP_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(QUESTION_TITLE_SNAP_PREFERENCE_KEY),
                 )
 
                 val autoHideArticleBottomBar = remember {

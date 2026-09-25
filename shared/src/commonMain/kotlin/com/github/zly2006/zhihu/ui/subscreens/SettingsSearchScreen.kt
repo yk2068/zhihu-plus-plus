@@ -61,6 +61,7 @@ import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.QUESTION_TITLE_SNAP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -172,6 +173,7 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式", "卡片样式", "分割线")))
     add(appearanceEntry("appearance.webviewRender", "使用 WebView 显示文章", "切换文章、回答、想法正文渲染方式。", ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
     add(appearanceEntry("appearance.titleAutoHide", "自动隐藏回答标题", "阅读时自动收起顶部标题。", "titleAutoHide", listOf("标题栏")))
+    add(appearanceEntry("appearance.questionTitleSnap", "问题标题自动吸附", "问题页下划后把标题吸附到顶栏，默认关闭。", QUESTION_TITLE_SNAP_PREFERENCE_KEY, listOf("问题", "标题栏", "吸附")))
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
     add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
     add(appearanceEntry("appearance.pinAnswerDate", "置顶回答日期", "调整回答日期在正文中的位置。", "pinAnswerDate"))

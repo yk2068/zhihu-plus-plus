@@ -124,9 +124,8 @@ sealed interface Feed {
         override fun filterReason(): String? = filterReason(QualityFilterSettings())
 
         fun filterReason(settings: QualityFilterSettings): String? = if (settings.minLikeCount > 0 &&
-            voteupCount >= 0 &&
             voteupCount < settings.minLikeCount &&
-            author?.isFollowing == false
+            author?.isFollowing != true
         ) {
             "规则：回答；赞数 < ${settings.minLikeCount}，未关注作者"
         } else {
@@ -154,7 +153,7 @@ sealed interface Feed {
 
         fun filterReason(settings: QualityFilterSettings): String? = when {
             settings.blockVideo -> "规则：视频；已开启直接屏蔽视频"
-            settings.minLikeCount > 0 && voteCount >= 0 && voteCount < settings.minLikeCount && !author.isFollowing ->
+            settings.minLikeCount > 0 && voteCount < settings.minLikeCount && !author.isFollowing ->
                 "规则：视频；赞数 < ${settings.minLikeCount}，未关注作者"
             else -> null
         }
@@ -200,7 +199,6 @@ sealed interface Feed {
         override fun filterReason(): String? = filterReason(QualityFilterSettings())
 
         fun filterReason(settings: QualityFilterSettings): String? = if (settings.minLikeCount > 0 &&
-            voteupCount >= 0 &&
             voteupCount < settings.minLikeCount &&
             !author.isFollowing
         ) {
@@ -241,7 +239,8 @@ sealed interface Feed {
 
         fun filterReason(settings: QualityFilterSettings): String? = when {
             settings.blockPin -> "规则：想法；已开启直接屏蔽想法"
-            settings.minLikeCount > 0 && likeCount >= 0 && likeCount < settings.minLikeCount && !author.isFollowing ->
+            // 赞数缺失（-1）或作者未知都按「未关注作者」处理，否则卡片不返回这些字段时规则会被整体跳过。
+            settings.minLikeCount > 0 && likeCount < settings.minLikeCount && !author.isFollowing ->
                 "规则：想法；点赞数 < ${settings.minLikeCount}，未关注作者"
             else -> null
         }

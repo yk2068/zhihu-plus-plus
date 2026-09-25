@@ -103,12 +103,16 @@ class MobileHomeFeedQualityFilterTest {
     }
 
     @Test
-    fun cardWithoutVoteReactionIsNotTreatedAsZeroLikes() {
-        // 没有 Vote 反应时赞数未知（-1），不应被当成 0 赞直接判为低质量。
+    fun cardWithoutVoteReactionCountsAsBelowThreshold() {
+        // 没有 Vote 反应时赞数未知（-1）。按「缺失也算不达标」的口径处理，
+        // 而不是跳过判断——否则卡片不返回该字段时规则会被整体绕过。
         val item = assertNotNull(parse("https://www.zhihu.com/answer/789", voteCount = null))
         val answer = assertIs<Feed.AnswerTarget>(assertNotNull(item.feed).target)
 
         assertEquals(-1, answer.voteupCount)
-        assertEquals(null, answer.filterReason(QualityFilterSettings(minLikeCount = 10)))
+        assertEquals(
+            "规则：回答；赞数 < 10，未关注作者",
+            answer.filterReason(QualityFilterSettings(minLikeCount = 10)),
+        )
     }
 }

@@ -122,6 +122,59 @@ class QualityFilterRuleTest {
         assertNull(video(votes = 0, author = followed).filterReason(settings))
     }
 
+    /**
+     * 回答缺少作者信息时仍必须按赞数过滤。
+     *
+     * 回归背景：主页回答的 JSON 不保证带 `target.author`（请求的 include 只有
+     * `target.author.badge_v2`），而规则写成 `author?.isFollowing == false`。
+     * author 为 null 时该表达式是 `null == false`，求值为 false，于是整条规则被跳过——
+     * 表现就是「主页回答完全不按赞数过滤」。
+     */
+    @Test
+    fun answerWithoutAuthorIsStillFilteredByLikeCount() {
+        val noAuthor = Feed.AnswerTarget(
+            id = 1,
+            url = "https://www.zhihu.com/answer/1",
+            author = null,
+            voteupCount = 0,
+            question = Feed.QuestionTarget(id = 2, url = "https://www.zhihu.com/question/2", type = "question"),
+        )
+
+        assertEquals(
+            "规则：回答；赞数 < 10，未关注作者",
+            noAuthor.filterReason(QualityFilterSettings(minLikeCount = 10)),
+        )
+    }
+
+    /** 赞数缺失（-1，表示卡片没有该字段）按不达标处理。 */
+    @Test
+    fun pinWithUnknownLikeCountIsTreatedAsBelowThreshold() {
+        val settings = QualityFilterSettings(minLikeCount = 10)
+
+        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = -1).filterReason(settings))
+        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = 0).filterReason(settings))
+    }
+
+    /**
+     * 赞数缺失（-1，表示卡片没有该字段）按不达标处理。
+     *
+     * 手机版卡片页脚没有 Vote 反应时解析出的赞数就是 -1；此前规则里的 `voteupCount >= 0`
+     * 会让这种情况直接跳过判断，等于不过滤。
+     */
+    @Test
+    fun missingLikeCountCountsAsBelowThreshold() {
+        val settings = QualityFilterSettings(minLikeCount = 10)
+        val unknownVotes = Feed.AnswerTarget(
+            id = 1,
+            url = "https://www.zhihu.com/answer/1",
+            author = person(),
+            voteupCount = -1,
+            question = Feed.QuestionTarget(id = 2, url = "https://www.zhihu.com/question/2", type = "question"),
+        )
+
+        assertEquals("规则：回答；赞数 < 10，未关注作者", unknownVotes.filterReason(settings))
+    }
+
     @Test
     fun blockVideoIgnoresVoteCountAndFollowState() {
         val settings = QualityFilterSettings(blockVideo = true)
