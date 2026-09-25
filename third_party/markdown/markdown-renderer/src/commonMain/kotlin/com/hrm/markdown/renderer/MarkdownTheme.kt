@@ -68,6 +68,13 @@ data class MarkdownTheme(
     val dividerThickness: Dp = 1.dp,
     /** 链接颜色 */
     val linkColor: Color = Color(0xFF0969DA),
+    /**
+     * 段落里的「划线片段」（段评）是否启用。
+     *
+     * 关闭时整项功能一起下线：不画虚线下划线，也不再是可点击区域，无障碍自定义动作同时移除。
+     * 划线本身就是唯一的功能提示，留下点击只会让用户点到一段看起来毫无区别的文字。
+     */
+    val segmentHighlightEnabled: Boolean = true,
     /** 块间距 */
     val blockSpacing: Dp = 12.dp,
     /** 列表项缩进 */

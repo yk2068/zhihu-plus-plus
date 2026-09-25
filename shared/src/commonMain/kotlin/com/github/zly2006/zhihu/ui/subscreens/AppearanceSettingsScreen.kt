@@ -130,6 +130,12 @@ const val DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY = "duo3_tiqian_math_font"
 const val PREF_FONT_SIZE = "contentFontSize"
 const val PREF_LINE_HEIGHT = "contentLineHeight"
 const val PREF_BLOCK_SPACING = "contentBlockSpacing"
+
+/** 正文里「划线片段」（段评）是否启用。见 [com.github.zly2006.zhihu.markdown.RenderMarkdown]。 */
+const val PREF_SEGMENT_HIGHLIGHT_ENABLED = "contentSegmentHighlightEnabled"
+
+/** 默认启用划线，与加入该开关之前的表现一致。 */
+const val DEFAULT_SEGMENT_HIGHLIGHT_ENABLED = true
 const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
@@ -154,6 +160,7 @@ const val APPEARANCE_SETTINGS_BOTTOM_BAR_SECTION_KEY = "appearanceSettings.botto
 const val APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG = "appearanceSettings.collectionDirectBrowse"
 const val APPEARANCE_SETTINGS_DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_TAG = "appearanceSettings.disableBottomSheetRoundedCorners"
 const val APPEARANCE_SETTINGS_LANDSCAPE_LIST_DETAIL_TAG = "appearanceSettings.landscapeListDetail"
+const val APPEARANCE_SETTINGS_SEGMENT_HIGHLIGHT_TAG = "appearanceSettings.segmentHighlightEnabled"
 
 const val START_DESTINATION_PREFERENCE_KEY = "startDestination"
 const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
@@ -707,6 +714,28 @@ fun AppearanceSettingsScreen(
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                         )
                     },
+                )
+
+                val segmentHighlightEnabled = remember {
+                    mutableStateOf(
+                        settings.getBoolean(
+                            PREF_SEGMENT_HIGHLIGHT_ENABLED,
+                            DEFAULT_SEGMENT_HIGHLIGHT_ENABLED,
+                        ),
+                    )
+                }
+                SettingItemWithSwitch(
+                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_SEGMENT_HIGHLIGHT_TAG),
+                    title = { Text("显示划线段评") },
+                    description = { Text("回答和文章里带段评的句子下方的虚线下划线。关闭后这些句子和普通文字一样，不再能点开赞数和评论。") },
+                    checked = segmentHighlightEnabled.value,
+                    onCheckedChange = {
+                        segmentHighlightEnabled.value = it
+                        settings.putBoolean(PREF_SEGMENT_HIGHLIGHT_ENABLED, it)
+                    },
+                    settingKey = PREF_SEGMENT_HIGHLIGHT_ENABLED,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(PREF_SEGMENT_HIGHLIGHT_ENABLED),
                 )
             }
 

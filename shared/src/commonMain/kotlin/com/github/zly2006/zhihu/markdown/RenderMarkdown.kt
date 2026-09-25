@@ -74,10 +74,12 @@ import com.github.zly2006.zhihu.ui.components.LocalSegmentCommentHost
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheet
 import com.github.zly2006.zhihu.ui.components.SegmentActionSheetState
 import com.github.zly2006.zhihu.ui.components.SegmentHighlightInteractionHost
+import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SEGMENT_HIGHLIGHT_ENABLED
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_BLOCK_SPACING
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
+import com.github.zly2006.zhihu.ui.subscreens.PREF_SEGMENT_HIGHLIGHT_ENABLED
 import com.hrm.markdown.parser.ast.Document
 import com.hrm.markdown.renderer.Markdown
 import com.hrm.markdown.renderer.MarkdownImageData
@@ -322,6 +324,10 @@ private fun RenderMarkdownDocument(
     val fontSize = settings.getInt(PREF_FONT_SIZE, 100)
     val lineHeight = settings.getInt(PREF_LINE_HEIGHT, 160)
     val blockSpacing = settings.getInt(PREF_BLOCK_SPACING, 100)
+    val segmentHighlightEnabled = settings.getBoolean(
+        PREF_SEGMENT_HIGHLIGHT_ENABLED,
+        DEFAULT_SEGMENT_HIGHLIGHT_ENABLED,
+    )
     var segmentCommentTarget by remember { mutableStateOf<SegmentCommentHolder?>(null) }
     var segmentActionSheetState by remember { mutableStateOf<SegmentActionSheetState?>(null) }
     CompositionLocalProvider(
@@ -351,6 +357,7 @@ private fun RenderMarkdownDocument(
                             mathFontFamilyId = settings
                                 .getString(DUO3_TIQIAN_MATH_FONT_PREFERENCE_KEY, "lete")
                                 .takeIf { it == "stix" },
+                            segmentHighlightEnabled = segmentHighlightEnabled,
                             onLinkClick = onLinkClick,
                             header = header,
                             footer = footer,
@@ -365,6 +372,7 @@ private fun RenderMarkdownDocument(
                                 lineHeight = scaledFontSize * lineHeight / 100,
                             ),
                             blockSpacing = defaultTheme.blockSpacing * (blockSpacing / 100f),
+                            segmentHighlightEnabled = segmentHighlightEnabled,
                             mathFontSize = 18f * fontSize / 100,
                             mathFont = mathFont ?: defaultTheme.mathFont,
                         )

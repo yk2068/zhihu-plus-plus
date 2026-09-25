@@ -86,6 +86,7 @@ internal actual fun PlatformTiqianMarkdown(
     lineHeightFromFontSize: Float,
     blockSpacingScale: Float,
     mathFontFamilyId: String?,
+    segmentHighlightEnabled: Boolean,
     onLinkClick: (String) -> Unit,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,
@@ -102,7 +103,7 @@ internal actual fun PlatformTiqianMarkdown(
         blockSpacingScale = blockSpacingScale,
         mathFontFamilyId = mathFontFamilyId,
     )
-    val inlineSlots = rememberZhihuInlineSlots(imageUrls)
+    val inlineSlots = rememberZhihuInlineSlots(imageUrls, segmentHighlightEnabled)
     val imageProvider: MarkdownImageProvider = { block -> ZhihuMarkdownImageContent(block) }
     val saveImage = rememberImageSaver()
     val shareImage = rememberImageSharer()
@@ -202,6 +203,7 @@ private fun compileZhihuMarkdown(document: Document, sourceMarkdown: String?): Z
 @Composable
 private fun rememberZhihuInlineSlots(
     imageUrls: List<String>,
+    segmentHighlightEnabled: Boolean,
 ): MarkdownInlineSlots {
     val onSegmentHighlightClick = LocalOnSegmentHighlightClick.current
     val segmentUnderlineColor = MaterialTheme.colorScheme.outlineVariant
@@ -249,12 +251,26 @@ private fun rememberZhihuInlineSlots(
             if (mark.kind != ZHIHU_SEGMENT_HIGHLIGHT_KIND) {
                 null
             } else {
+                // 关闭划线 = 整项功能下线：不画虚线，也不给 onClick / 无障碍标签，
+                // 否则用户会点到一段看起来与普通文字无异、却弹出段评的文字。
                 MarkdownCustomInlinePresentation(
-                    decoration = MarkdownInlineDecoration.DashedUnderline(segmentUnderlineColor),
-                    onClick = onSegmentHighlightClick?.let { callback ->
-                        { text -> callback(SegmentHighlight(text, mark.attributes)) }
+                    decoration = if (segmentHighlightEnabled) {
+                        MarkdownInlineDecoration.DashedUnderline(segmentUnderlineColor)
+                    } else {
+                        null
                     },
-                    accessibilityLabel = { text -> "打开划线片段：$text" },
+                    onClick = if (segmentHighlightEnabled) {
+                        onSegmentHighlightClick?.let { callback ->
+                            { text -> callback(SegmentHighlight(text, mark.attributes)) }
+                        }
+                    } else {
+                        null
+                    },
+                    accessibilityLabel = if (segmentHighlightEnabled) {
+                        { text -> "打开划线片段：$text" }
+                    } else {
+                        null
+                    },
                 )
             }
         },

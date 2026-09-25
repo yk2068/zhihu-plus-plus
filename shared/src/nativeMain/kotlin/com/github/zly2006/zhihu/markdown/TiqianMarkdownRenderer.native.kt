@@ -37,6 +37,7 @@ internal actual fun PlatformTiqianMarkdown(
     lineHeightFromFontSize: Float,
     blockSpacingScale: Float,
     mathFontFamilyId: String?,
+    segmentHighlightEnabled: Boolean,
     onLinkClick: (String) -> Unit,
     header: (@Composable () -> Unit)?,
     footer: (@Composable () -> Unit)?,

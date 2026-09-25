@@ -93,14 +93,17 @@ private fun SimpleParagraphRenderer(
     val annotatedText = inlineResult.annotated
     var textLayoutResult by remember(annotatedText) { mutableStateOf<TextLayoutResult?>(null) }
     val underlineColor = MaterialTheme.colorScheme.outlineVariant
+    // 关闭划线时，这些片段退化为普通文字：既不画虚线，也不再是可点击区域。
+    // 只去掉绘制而留下点击，会让用户点到一段看起来毫无区别的文字却弹出段评。
+    val segmentHighlightClick = onSegmentHighlightClick.takeIf { theme.segmentHighlightEnabled }
     val interactionModifier = modifier.markdownInlineTaps(
         annotated = annotatedText,
-        highlights = segmentHighlights,
+        highlights = if (theme.segmentHighlightEnabled) segmentHighlights else emptyMap(),
         textLayoutResult = { textLayoutResult },
-        onHighlightClick = onSegmentHighlightClick,
+        onHighlightClick = segmentHighlightClick,
         onLinkClick = null,
     )
-    val visualModifier = if (segmentHighlights.isEmpty()) {
+    val visualModifier = if (segmentHighlights.isEmpty() || !theme.segmentHighlightEnabled) {
         interactionModifier
     } else {
         interactionModifier
@@ -134,10 +137,12 @@ private fun SimpleParagraphRenderer(
             }
     }
     val accessibilityActions = buildList {
-        if (onSegmentHighlightClick != null) {
+        // 无障碍入口也必须跟着开关一起关闭，否则屏幕阅读器仍能弹出段评，
+        // 而划线功能在视觉上已经被用户关掉了。
+        if (segmentHighlightClick != null) {
             addAll(segmentHighlights.values.map { highlight ->
                 CustomAccessibilityAction("打开划线片段：${highlight.text}") {
-                    onSegmentHighlightClick(highlight)
+                    segmentHighlightClick(highlight)
                     true
                 }
             })
