@@ -76,10 +76,24 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
             return available - consumedUnfilteredCount < PREFETCH_UNFILTERED_MARGIN
         }
 
+    /**
+     * 「隐藏」模式下，被质量规则命中的条目直接不进列表。
+     *
+     * 质量过滤在 [createDisplayItem] 里把命中条目替换成「已屏蔽」占位，再按 [QualityFilterMode] 决定去留：
+     * - OFF：完全不判断
+     * - RULES：保留占位，让用户看到「这里过滤掉了什么」
+     * - HIDE：直接移除
+     *
+     * 这个判断放在基类，是因为 `displayItems` 是所有推荐模式（Web / 安卓 / 本地 / 混合）共用的最终列表。
+     * 此前 HIDE 只写在 `HomeFeedViewModel` 里，混合推荐（默认模式）和安卓推荐都绕过了它。
+     */
+    private fun FeedDisplayEnvironment.dropsQualityFilteredItems(): Boolean =
+        feedDisplaySettings().qualityFilterMode == QualityFilterMode.HIDE
+
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
         val loadedItems = data.flattenFeeds().map { createDisplayItem(environment, it) }
-        addDisplayItems(loadedItems)
+        addDisplayItems(loadedItems, dropQualityFiltered = environment.dropsQualityFilteredItems())
         latestLoadedDisplayItems.value = loadedItems
     }
 
@@ -117,8 +131,18 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
         )
     }
 
-    fun addDisplayItems(newItems: List<FeedDisplayItem>) {
+    /**
+     * 追加待展示条目。
+     *
+     * [dropQualityFiltered] 为 true（即「隐藏」模式）时，被质量规则命中的条目直接丢弃，
+     * 而不是以「已屏蔽」占位的形式留在列表里。
+     */
+    fun addDisplayItems(
+        newItems: List<FeedDisplayItem>,
+        dropQualityFiltered: Boolean = false,
+    ) {
         newItems.forEach {
+            if (dropQualityFiltered && it.isQualityFiltered) return@forEach
             if (displayItems.none { existing -> existing.stableKey == it.stableKey }) {
                 displayItems.add(it)
             }

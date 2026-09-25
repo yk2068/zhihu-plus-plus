@@ -179,17 +179,16 @@ class HomeFeedViewModel :
             val loadedItems = data
                 .flattenFeeds()
                 .map { feed -> createDisplayItem(environment, feed) }
-            val newItems = if (environment.feedDisplaySettings().qualityFilterMode == QualityFilterMode.HIDE) {
-                loadedItems.filterNot { it.isQualityFiltered }
-            } else {
-                loadedItems
-            }
 
             val reverseBlock = environment.feedDisplaySettings().reverseBlock
-            val foregroundItems = environment.applyForegroundHomeFeedFilter(newItems)
+            val foregroundItems = environment.applyForegroundHomeFeedFilter(loadedItems)
             if (!reverseBlock) {
                 withContext(Dispatchers.Main) {
-                    addDisplayItems(foregroundItems)
+                    // HIDE 模式的丢弃由基类 addDisplayItems 统一处理，这里不再重复判断。
+                    addDisplayItems(
+                        foregroundItems,
+                        dropQualityFiltered = environment.feedDisplaySettings().qualityFilterMode == QualityFilterMode.HIDE,
+                    )
                 }
             }
 

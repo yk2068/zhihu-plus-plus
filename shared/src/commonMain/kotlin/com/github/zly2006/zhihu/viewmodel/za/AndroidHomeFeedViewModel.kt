@@ -87,7 +87,7 @@ class AndroidHomeFeedViewModel :
                         }
                     }
 
-                // 手机版推荐卡片由本方法直接构造，不经过 createDisplayItem，因此质量过滤在这里单独执行。
+                // 手机版推荐卡片由本方法直接构造，不经过 processResponse，因此质量过滤在这里单独执行。
                 // 缺失这一步会导致「手机版推荐」下赞数/屏蔽视频等规则完全不生效。
                 val qualityFilteredItems = if (displaySettings.qualityFilterMode == QualityFilterMode.OFF) {
                     itemsToDisplay
@@ -100,16 +100,14 @@ class AndroidHomeFeedViewModel :
                     }
                 }
 
-                val hideQualityFiltered =
-                    displaySettings.qualityFilterMode == QualityFilterMode.HIDE
-
-                // 前台先做本地已读过滤，再立即展示
+                // 前台先做本地已读过滤，再立即展示；HIDE 模式下由基类丢弃命中条目。
                 val reverseBlock = displaySettings.reverseBlock
                 val foregroundItems = environment.applyForegroundHomeFeedFilter(qualityFilteredItems)
                 if (!reverseBlock) {
                     withContext(Dispatchers.Main) {
                         addDisplayItems(
-                            if (hideQualityFiltered) foregroundItems.filterNot { it.isQualityFiltered } else foregroundItems,
+                            foregroundItems,
+                            dropQualityFiltered = displaySettings.qualityFilterMode == QualityFilterMode.HIDE,
                         )
                     }
                 }
@@ -309,11 +307,8 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         // 手机版卡片同样要能参与质量过滤，因此为非想法类型补出带赞数的 target。
         // 回答在导航层也表示为 Article（type = Answer），这里按 type 分成两种 target。
         is Article -> {
-            val cardAuthor = mobileCardAuthor(authorName, avatar)
-            if (cardAuthor == null) {
-                // 没有作者信息时无法判断「是否已关注」，不做过滤，保持原样展示。
-                null
-            } else if (routeDest.type == ArticleType.Answer) {
+            val cardAuthor = mobileCardAuthor()
+            if (routeDest.type == ArticleType.Answer) {
                 CommonFeed(
                     id = card["id"]?.jsonPrimitive?.content.orEmpty(),
                     target = Feed.AnswerTarget(
@@ -353,7 +348,7 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         authorName = authorName,
         summary = summary,
         title = title,
-        details = "$footerText · 手机版推荐",
+        details = footerText,
         feed = feed,
     )
 }
@@ -408,22 +403,18 @@ private data class MobileHomeImage(
 )
 
 /**
- * 手机版推荐卡片只提供作者名和头像，没有稳定的作者 id。
+ * 手机版推荐卡片只提供作者名和头像，没有作者 id，也不带「是否已关注」。
  *
- * 质量过滤只读取 `isFollowing`（已关注作者豁免）和展示用的名称/头像，
- * 因此这里用作者名兜底作为 id；没有作者信息时返回 null，表示「未知作者」。
+ * 质量过滤读取 `isFollowing`（已关注作者豁免），因此手机版推荐下的卡片一律按未关注作者判断。
  */
-private fun mobileCardAuthor(authorName: String, avatar: String): Person? {
-    if (authorName.isBlank()) return null
-    return Person(
-        id = authorName,
-        url = "",
-        userType = "people",
-        name = authorName,
-        headline = "",
-        avatarUrl = avatar,
-    )
-}
+private fun mobileCardAuthor(): Person = Person(
+    id = "",
+    url = "",
+    userType = "people",
+    name = "",
+    headline = "",
+    avatarUrl = "",
+)
 
 /**
  * Find the first JsonObject in the list where the value associated with [key] matches [value].

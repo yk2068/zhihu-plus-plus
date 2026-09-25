@@ -46,7 +46,7 @@ class MobileHomeFeedParserTest {
         requireNotNull(item)
         assertEquals("回答标题", item.title)
         assertEquals("回答摘要", item.summary)
-        assertEquals("10 赞同 · 2 评论 · 3 收藏 · 手机版推荐", item.details)
+        assertEquals("10 赞同 · 2 评论 · 3 收藏", item.details)
         assertEquals("作者名", item.authorName)
         assertEquals("https://example.com/avatar.jpg", item.avatarSrc)
 

@@ -19,6 +19,7 @@ package com.github.zly2006.zhihu.viewmodel.feed
 
 import com.github.zly2006.zhihu.data.CommonFeed
 import com.github.zly2006.zhihu.data.Feed
+import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
@@ -92,5 +93,49 @@ class QualityFilterModeTest {
 
         assertTrue(item.isQualityFiltered)
         assertTrue(item.summary.orEmpty().contains("1000"))
+    }
+
+    /**
+     * 「隐藏」模式下命中条目必须真的不进列表。
+     *
+     * 回归背景：HIDE 判断曾只写在 `HomeFeedViewModel` 里，而混合推荐（默认模式）和安卓推荐
+     * 都直接继承 `BaseFeedViewModel`、绕过该判断，导致这两种模式下「隐藏」看起来完全不生效。
+     * 现在丢弃逻辑收敛到基类 `addDisplayItems`，所有模式共用。
+     */
+    @Test
+    fun hideModeDropsQualityFilteredItemsFromTheSharedList() {
+        val model = HomeFeedViewModel()
+        val filtered = FeedDisplayItem(
+            title = "已屏蔽",
+            summary = "低质量",
+            details = "低质量",
+            feed = null,
+            isFiltered = true,
+            isQualityFiltered = true,
+        )
+        val kept = FeedDisplayItem(title = "正常条目", summary = "摘要", details = "详情", feed = null)
+
+        model.addDisplayItems(listOf(filtered, kept), dropQualityFiltered = true)
+
+        assertEquals(1, model.displayItems.size)
+        assertEquals("正常条目", model.displayItems.single().title)
+    }
+
+    @Test
+    fun rulesModeKeepsQualityFilteredPlaceholder() {
+        val model = HomeFeedViewModel()
+        val filtered = FeedDisplayItem(
+            title = "已屏蔽",
+            summary = "低质量",
+            details = "低质量",
+            feed = null,
+            isFiltered = true,
+            isQualityFiltered = true,
+        )
+
+        model.addDisplayItems(listOf(filtered), dropQualityFiltered = false)
+
+        assertEquals(1, model.displayItems.size)
+        assertEquals("已屏蔽", model.displayItems.single().title)
     }
 }
