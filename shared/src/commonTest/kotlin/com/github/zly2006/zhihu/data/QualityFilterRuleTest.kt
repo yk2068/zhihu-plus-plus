@@ -92,20 +92,24 @@ class QualityFilterRuleTest {
     }
 
     @Test
-    fun pinIsNotFilteredByDefaultBecauseLikeCountIsOftenAbsent() {
-        // 很多想法卡片不返回点赞数，默认阈值必须放过它们，否则整个想法流会被误杀。
-        assertNull(pin(likes = 0).filterReason(QualityFilterSettings()))
-        assertNull(pin(likes = 0).filterReason(QualityFilterSettings(minLikeCount = 100)))
+    fun minLikeCountAppliesToPinAsWell() {
+        // 想法与回答/文章/视频共用同一个最低赞数阈值。
+        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = 3).filterReason(QualityFilterSettings(minLikeCount = 10)))
+        assertNull(pin(likes = 10).filterReason(QualityFilterSettings(minLikeCount = 10)))
+        assertNull(pin(likes = 99).filterReason(QualityFilterSettings(minLikeCount = 10)))
     }
 
     @Test
-    fun pinUsesItsOwnOptInThreshold() {
-        val settings = QualityFilterSettings(pinLikeCount = 10)
-
-        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = 3).filterReason(settings))
-        assertNull(pin(likes = 10).filterReason(settings))
-        // 已关注作者不受阈值影响。
-        assertNull(pin(likes = 0, author = person(following = true)).filterReason(settings))
+    fun pinWithoutLikeCountIsTreatedAsBelowThreshold() {
+        // 需求明确：缺失点赞数也算不达标，因此 likeCount = 0 的想法会被过滤。
+        // 这个取舍由用户确认过——代价是部分不返回点赞数的想法卡片会一起被过滤。
+        assertEquals(
+            "规则：想法；点赞数 < 10，未关注作者",
+            pin(likes = 0).filterReason(QualityFilterSettings(minLikeCount = 10)),
+        )
+        // 已关注作者始终豁免；阈值设为 0 时关闭该规则。
+        assertNull(pin(likes = 0, author = person(following = true)).filterReason(QualityFilterSettings(minLikeCount = 10)))
+        assertNull(pin(likes = 0).filterReason(QualityFilterSettings(minLikeCount = 0)))
     }
 
     @Test

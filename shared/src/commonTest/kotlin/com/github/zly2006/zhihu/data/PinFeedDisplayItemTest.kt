@@ -112,7 +112,7 @@ class PinFeedDisplayItemTest {
         assertEquals("future_content", unknown.value["type"]?.jsonPrimitive?.content)
         assertEquals(
             "兼容摘要",
-            CommonFeed(id = "pin-feed", target = pin).toDisplayItem().summary,
+            CommonFeed(id = "pin-feed", target = pin).toDisplayItem(enableQualityFilter = false).summary,
         )
     }
 
@@ -122,7 +122,7 @@ class PinFeedDisplayItemTest {
             title = "想法标题",
             content = "<p>第一段正文，后面还有<strong>更多内容</strong>。</p>",
             excerptTitle = "旧摘要",
-        ).toDisplayItem()
+        ).toDisplayItem(enableQualityFilter = false)
 
         assertEquals("想法标题", item.title)
         assertEquals("第一段正文，后面还有更多内容。", item.summary)
@@ -134,7 +134,7 @@ class PinFeedDisplayItemTest {
             title = "List<Integer> 后面的标题",
             content = "<p>正文 List&lt;Integer&gt; 后面的内容</p>",
             excerptTitle = "",
-        ).toDisplayItem()
+        ).toDisplayItem(enableQualityFilter = false)
 
         assertEquals("List<Integer> 后面的标题", item.title)
         assertEquals("正文 List<Integer> 后面的内容", item.summary)
@@ -146,7 +146,7 @@ class PinFeedDisplayItemTest {
             title = "",
             content = "没有标题时仍应显示的正文。",
             excerptTitle = "",
-        ).toDisplayItem()
+        ).toDisplayItem(enableQualityFilter = false)
 
         assertEquals("", item.title)
         assertEquals("没有标题时仍应显示的正文。", item.summary)
@@ -158,7 +158,7 @@ class PinFeedDisplayItemTest {
             title = null,
             content = null,
             excerptTitle = "旧接口提供的想法预览",
-        ).toDisplayItem()
+        ).toDisplayItem(enableQualityFilter = false)
 
         assertEquals("", item.title)
         assertEquals("旧接口提供的想法预览", item.summary)
@@ -171,7 +171,7 @@ class PinFeedDisplayItemTest {
             content = "图片条目后仍可读取的正文。",
             excerptTitle = "",
             includeImage = true,
-        ).toDisplayItem()
+        ).toDisplayItem(enableQualityFilter = false)
 
         assertEquals("", item.title)
         assertEquals("图片条目后仍可读取的正文。", item.summary)
