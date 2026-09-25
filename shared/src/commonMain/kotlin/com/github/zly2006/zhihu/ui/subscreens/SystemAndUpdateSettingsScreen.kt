@@ -217,7 +217,7 @@ fun SystemAndUpdateSettingsScreen(
             // 「系统与更新」不在此列——它就是本页入口，隐藏后用户将无法恢复任何入口。
             SettingItemGroup(
                 title = "隐藏设置项",
-                footer = { Text("开启后账号页不再显示对应入口；被隐藏入口会在原位置留一条「已隐藏」提示，点它即可恢复。") },
+                footer = { Text("开启后账号页不再显示对应入口。要恢复显示，回到本页关闭对应开关即可。") },
             ) {
                 HideableSettingGroup.all.forEach { group ->
                     val (checked, setChecked) = rememberGroupHidden(group)

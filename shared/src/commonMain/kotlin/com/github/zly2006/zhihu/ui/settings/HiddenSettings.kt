@@ -17,10 +17,6 @@
 
 package com.github.zly2006.zhihu.ui.settings
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.components.SettingItem
 
 /**
  * 可被用户隐藏的账号页设置入口。
@@ -36,8 +31,8 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
  * 按需求，除「系统与更新」外的所有设置入口都支持隐藏：系统与更新页承载隐藏设置项本身，
  * 隐藏它会让用户失去恢复其他入口的唯一途径，因此固定展示。
  *
- * 隐藏只影响入口是否展示，不改变对应设置项的值，也不影响这些设置的运行时行为；
- * 已隐藏的入口会在原位置留一条「已隐藏」提示，点它即可恢复显示。
+ * 隐藏只影响入口是否展示，不改变对应设置项的值，也不影响这些设置的运行时行为。
+ * 被隐藏的入口在账号页直接消失，不再留提示行；要恢复请到「系统与更新 → 隐藏设置项」关闭对应开关。
  *
  * 新增可隐藏入口时在这里加一个枚举项即可，不要在设置页里散写 preference key。
  */
@@ -120,22 +115,4 @@ fun rememberGroupHidden(group: HideableSettingGroup): Pair<Boolean, (Boolean) ->
         settings.putBoolean(group.preferenceKey, value)
     }
     return hidden to update
-}
-
-/**
- * 已隐藏入口在原位置留下的提示行。
- *
- * 入口被隐藏后必须仍有一条回到「显示」的路径，否则用户只能去改偏好文件才能找回设置页。
- */
-@Composable
-fun HiddenSettingPlaceholder(
-    group: HideableSettingGroup,
-    onRestore: () -> Unit,
-) {
-    SettingItem(
-        title = { Text("已隐藏「${group.title}」") },
-        description = { Text("该设置入口已被隐藏，点此恢复显示") },
-        icon = { Icon(Icons.Default.VisibilityOff, null) },
-        onClick = onRestore,
-    )
 }

@@ -90,7 +90,6 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
-import com.github.zly2006.zhihu.ui.settings.HiddenSettingPlaceholder
 import com.github.zly2006.zhihu.ui.settings.HideableSettingGroup
 import com.github.zly2006.zhihu.ui.settings.rememberGroupHidden
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -448,7 +447,7 @@ fun AccountSettingScreen(
 
             SettingItemGroup {
                 if (data.login) {
-                    val (identityHidden, setIdentityHidden) = rememberGroupHidden(HideableSettingGroup.IDENTITY_MANAGEMENT)
+                    val (identityHidden, _) = rememberGroupHidden(HideableSettingGroup.IDENTITY_MANAGEMENT)
                     if (!identityHidden) {
                         SettingItem(
                             title = { Text(HideableSettingGroup.IDENTITY_MANAGEMENT.title) },
@@ -457,12 +456,10 @@ fun AccountSettingScreen(
                             modifier = Modifier.testTag(ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG),
                             onClick = { navigator.onNavigate(Account.IdentityManagement) },
                         )
-                    } else {
-                        HiddenSettingPlaceholder(HideableSettingGroup.IDENTITY_MANAGEMENT) { setIdentityHidden(false) }
                     }
                 }
 
-                val (appearanceHidden, setAppearanceHidden) = rememberGroupHidden(HideableSettingGroup.APPEARANCE)
+                val (appearanceHidden, _) = rememberGroupHidden(HideableSettingGroup.APPEARANCE)
                 if (!appearanceHidden) {
                     SettingItem(
                         title = { Text(HideableSettingGroup.APPEARANCE.title) },
@@ -471,11 +468,9 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
                         onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
                     )
-                } else {
-                    HiddenSettingPlaceholder(HideableSettingGroup.APPEARANCE) { setAppearanceHidden(false) }
                 }
 
-                val (readingHidden, setReadingHidden) = rememberGroupHidden(HideableSettingGroup.READING)
+                val (readingHidden, _) = rememberGroupHidden(HideableSettingGroup.READING)
                 if (readingPlayerSupported && !readingHidden) {
                     SettingItem(
                         title = { Text(HideableSettingGroup.READING.title) },
@@ -484,11 +479,9 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_READING_TAG),
                         onClick = { navigator.onNavigate(Account.ReadingSettings) },
                     )
-                } else if (readingPlayerSupported) {
-                    HiddenSettingPlaceholder(HideableSettingGroup.READING) { setReadingHidden(false) }
                 }
 
-                val (recommendHidden, setRecommendHidden) = rememberGroupHidden(HideableSettingGroup.RECOMMEND)
+                val (recommendHidden, _) = rememberGroupHidden(HideableSettingGroup.RECOMMEND)
                 if (!recommendHidden) {
                     SettingItem(
                         title = { Text(HideableSettingGroup.RECOMMEND.title) },
@@ -497,8 +490,6 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_RECOMMEND_TAG),
                         onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                     )
-                } else {
-                    HiddenSettingPlaceholder(HideableSettingGroup.RECOMMEND) { setRecommendHidden(false) }
                 }
 
                 // 系统与更新固定展示：隐藏设置项本身在这里，隐藏它会让所有入口都无法恢复。
@@ -510,7 +501,7 @@ fun AccountSettingScreen(
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                 )
 
-                val (developerHidden, setDeveloperHidden) = rememberGroupHidden(HideableSettingGroup.DEVELOPER)
+                val (developerHidden, _) = rememberGroupHidden(HideableSettingGroup.DEVELOPER)
                 AnimatedVisibility(isDeveloper && !developerHidden) {
                     SettingItem(
                         title = { Text(HideableSettingGroup.DEVELOPER.title) },
@@ -518,9 +509,6 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_DEVELOPER_TAG),
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
                     )
-                }
-                AnimatedVisibility(isDeveloper && developerHidden) {
-                    HiddenSettingPlaceholder(HideableSettingGroup.DEVELOPER) { setDeveloperHidden(false) }
                 }
             }
         }
