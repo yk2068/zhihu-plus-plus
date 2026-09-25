@@ -553,15 +553,13 @@ enum class QualityFilterMode {
 }
 
 const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
-const val ANSWER_VOTEUP_THRESHOLD_PREFERENCE_KEY = "answerVoteupThreshold"
-const val ARTICLE_VOTEUP_THRESHOLD_PREFERENCE_KEY = "articleVoteupThreshold"
-const val ARTICLE_FOLLOWERS_THRESHOLD_PREFERENCE_KEY = "articleFollowersThreshold"
-const val VIDEO_VOTE_THRESHOLD_PREFERENCE_KEY = "videoVoteThreshold"
-const val PIN_LIKE_THRESHOLD_PREFERENCE_KEY = "pinLikeThreshold"
-const val BLOCK_VIDEO_PREFERENCE_KEY = "blockVideo"
-const val BLOCK_PIN_PREFERENCE_KEY = "blockPin"
+
+/** 统一的最低赞数阈值，适用于回答、文章、视频和想法，不再按内容类型分别配置。 */
+const val MIN_LIKE_THRESHOLD_PREFERENCE_KEY = "minLikeThreshold"
 const val QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY = "questionAnswerThreshold"
 const val QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY = "questionFollowersThreshold"
+const val BLOCK_VIDEO_PREFERENCE_KEY = "blockVideo"
+const val BLOCK_PIN_PREFERENCE_KEY = "blockPin"
 
 data class HomeFeedFilterResult(
     val foregroundItems: List<FeedDisplayItem>,

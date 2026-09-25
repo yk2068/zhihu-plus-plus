@@ -68,12 +68,12 @@ class PersonFollowerCountTest {
             ),
         )
 
-        // 文章粉丝数阈值默认关闭（0 = 不限制），显式给出阈值才能验证粉丝数真的参与判定。
-        assertNull(article.filterReason(QualityFilterSettings(articleFollowersCount = 1000)))
+        // 赞数阈值现在对所有类型统一：该夹具 30 赞，阈值 1000 时被过滤，阈值 10 时保留。
         assertEquals(
-            "规则：文章；作者粉丝数 < 5000 或文章赞数 < 20，未关注作者",
-            article.filterReason(QualityFilterSettings(articleFollowersCount = 5000)),
+            "规则：文章；赞数 < 1000，未关注作者",
+            article.filterReason(QualityFilterSettings(minLikeCount = 1000)),
         )
+        assertNull(article.filterReason(QualityFilterSettings(minLikeCount = 10)))
     }
 
     @Test
@@ -98,13 +98,12 @@ class PersonFollowerCountTest {
             ),
         )
 
-        // 视频规则不再按作者粉丝数过滤：该夹具赞数为 0，粉丝数阈值对它不再产生影响，
-        // 命中与否只取决于赞数阈值和「直接屏蔽视频」。
+        // 该夹具赞数为 0，统一阈值下命中与否只取决于 minLikeCount 和「直接屏蔽视频」。
         assertEquals(
             "规则：视频；赞数 < 20，未关注作者",
-            video.filterReason(QualityFilterSettings(videoVoteCount = 20)),
+            video.filterReason(QualityFilterSettings(minLikeCount = 20)),
         )
-        assertNull(video.filterReason(QualityFilterSettings(videoVoteCount = 0)))
+        assertNull(video.filterReason(QualityFilterSettings(minLikeCount = 0)))
         assertEquals(
             "规则：视频；已开启直接屏蔽视频",
             video.filterReason(QualityFilterSettings(blockVideo = true)),

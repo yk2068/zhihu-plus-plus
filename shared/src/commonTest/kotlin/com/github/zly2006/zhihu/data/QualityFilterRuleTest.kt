@@ -22,10 +22,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /**
- * 质量屏蔽的分类规则：想法参与过滤、视频可被整体屏蔽、阈值为 0 时该条规则不生效。
+ * 质量屏蔽规则：最低赞数对所有内容类型统一生效，视频与想法还支持整体屏蔽。
  */
 class QualityFilterRuleTest {
-    private fun person(followers: Int = 0, following: Boolean = false) = Person(
+    private fun person(following: Boolean = false) = Person(
         id = "author-id",
         url = "https://www.zhihu.com/people/author",
         userType = "people",
@@ -33,15 +33,23 @@ class QualityFilterRuleTest {
         name = "作者",
         headline = "",
         avatarUrl = "",
-        followersCount = followers,
         isFollowing = following,
     )
 
-    private fun pin(likes: Int, author: Person = person()) = Feed.PinTarget(
-        id = 574,
-        url = "https://www.zhihu.com/pin/574",
+    private fun answer(votes: Int, author: Person = person()) = Feed.AnswerTarget(
+        id = 1,
+        url = "https://www.zhihu.com/answer/1",
         author = author,
-        likeCount = likes,
+        voteupCount = votes,
+        question = Feed.QuestionTarget(id = 2, url = "https://www.zhihu.com/question/2", type = "question"),
+    )
+
+    private fun article(votes: Int, author: Person = person()) = Feed.ArticleTarget(
+        id = 557849764,
+        url = "https://zhuanlan.zhihu.com/p/557849764",
+        author = author,
+        voteupCount = votes,
+        title = "文章",
     )
 
     private fun video(votes: Int, author: Person = person()) = Feed.VideoTarget(
@@ -54,79 +62,90 @@ class QualityFilterRuleTest {
         excerpt = "",
     )
 
-    private fun article(votes: Int, author: Person) = Feed.ArticleTarget(
-        id = 557849764,
-        url = "https://zhuanlan.zhihu.com/p/557849764",
+    private fun pin(likes: Int, author: Person = person()) = Feed.PinTarget(
+        id = 574,
+        url = "https://www.zhihu.com/pin/574",
         author = author,
-        voteupCount = votes,
-        commentCount = 0,
-        title = "文章",
-        excerpt = "",
+        likeCount = likes,
     )
 
     @Test
-    fun pinIsFilteredByLikeThreshold() {
-        assertEquals(
-            "规则：想法；点赞数 < 10，未关注作者",
-            pin(likes = 3).filterReason(QualityFilterSettings(pinLikeCount = 10)),
-        )
-        assertNull(pin(likes = 10).filterReason(QualityFilterSettings(pinLikeCount = 10)))
-        assertNull(pin(likes = 99).filterReason(QualityFilterSettings(pinLikeCount = 10)))
+    fun minLikeCountAppliesToEveryContentType() {
+        val settings = QualityFilterSettings(minLikeCount = 10)
+
+        assertEquals("规则：回答；赞数 < 10，未关注作者", answer(votes = 3).filterReason(settings))
+        assertEquals("规则：文章；赞数 < 10，未关注作者", article(votes = 3).filterReason(settings))
+        assertEquals("规则：视频；赞数 < 10，未关注作者", video(votes = 3).filterReason(settings))
+        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = 3).filterReason(settings))
+
+        assertNull(answer(votes = 10).filterReason(settings))
+        assertNull(article(votes = 10).filterReason(settings))
+        assertNull(video(votes = 10).filterReason(settings))
+        assertNull(pin(likes = 10).filterReason(settings))
     }
 
     @Test
-    fun pinLikeThresholdZeroDisablesTheRule() {
-        assertNull(pin(likes = 0).filterReason(QualityFilterSettings(pinLikeCount = 0)))
+    fun minLikeCountZeroDisablesTheRuleForEveryType() {
+        val settings = QualityFilterSettings(minLikeCount = 0)
+
+        assertNull(answer(votes = 0).filterReason(settings))
+        assertNull(article(votes = 0).filterReason(settings))
+        assertNull(video(votes = 0).filterReason(settings))
+        assertNull(pin(likes = 0).filterReason(settings))
     }
 
     @Test
-    fun followedAuthorPinIsNeverFilteredByThreshold() {
-        assertNull(
-            pin(likes = 0, author = person(following = true))
-                .filterReason(QualityFilterSettings(pinLikeCount = 10)),
-        )
-    }
+    fun followedAuthorIsNeverFilteredByThreshold() {
+        val settings = QualityFilterSettings(minLikeCount = 10)
+        val followed = person(following = true)
 
-    @Test
-    fun blockPinIgnoresLikeCountAndFollowState() {
-        val settings = QualityFilterSettings(blockPin = true)
-        assertEquals("规则：想法；已开启直接屏蔽想法", pin(likes = 9999).filterReason(settings))
-        assertEquals(
-            "规则：想法；已开启直接屏蔽想法",
-            pin(likes = 9999, author = person(following = true)).filterReason(settings),
-        )
+        assertNull(answer(votes = 0, author = followed).filterReason(settings))
+        assertNull(article(votes = 0, author = followed).filterReason(settings))
+        assertNull(video(votes = 0, author = followed).filterReason(settings))
+        assertNull(pin(likes = 0, author = followed).filterReason(settings))
     }
 
     @Test
     fun blockVideoIgnoresVoteCountAndFollowState() {
-        val settings = QualityFilterSettings(blockVideo = true)
+        val settings = QualityFilterSettings(minLikeCount = 0, blockVideo = true)
+
         assertEquals("规则：视频；已开启直接屏蔽视频", video(votes = 9999).filterReason(settings))
         assertEquals(
             "规则：视频；已开启直接屏蔽视频",
             video(votes = 9999, author = person(following = true)).filterReason(settings),
         )
+        // 只影响视频，其他类型不受牵连。
+        assertNull(answer(votes = 0).filterReason(settings))
     }
 
     @Test
-    fun videoIsFilteredOnlyByVoteThreshold() {
-        // 作者粉丝数不再参与视频判定：粉丝极少但赞数达标的视频应保留。
-        val lowFollowerAuthor = person(followers = 1)
+    fun blockPinIgnoresLikeCountAndFollowState() {
+        val settings = QualityFilterSettings(minLikeCount = 0, blockPin = true)
+
+        assertEquals("规则：想法；已开启直接屏蔽想法", pin(likes = 9999).filterReason(settings))
         assertEquals(
-            "规则：视频；赞数 < 20，未关注作者",
-            video(votes = 5, author = lowFollowerAuthor).filterReason(QualityFilterSettings(videoVoteCount = 20)),
+            "规则：想法；已开启直接屏蔽想法",
+            pin(likes = 9999, author = person(following = true)).filterReason(settings),
         )
-        assertNull(video(votes = 20, author = lowFollowerAuthor).filterReason(QualityFilterSettings(videoVoteCount = 20)))
+        assertNull(article(votes = 0).filterReason(settings))
     }
 
     @Test
-    fun articleFollowerThresholdDefaultsToDisabled() {
-        // 默认 articleFollowersCount = 0，粉丝数不参与判定；显式设置后才生效。
-        val lowFollowerAuthor = person(followers = 1)
-        assertNull(article(votes = 100, author = lowFollowerAuthor).filterReason(QualityFilterSettings()))
+    fun questionUsesItsOwnThresholds() {
+        val question = Feed.QuestionTarget(
+            id = 1,
+            url = "https://www.zhihu.com/question/1",
+            type = "question",
+            answerCount = 2,
+            followerCount = 10,
+        )
+
         assertEquals(
-            "规则：文章；作者粉丝数 < 50 或文章赞数 < 20，未关注作者",
-            article(votes = 100, author = lowFollowerAuthor)
-                .filterReason(QualityFilterSettings(articleFollowersCount = 50)),
+            "规则：问题；回答数 < 5，关注数 < 50",
+            question.filterReason(QualityFilterSettings(questionAnswerCount = 5, questionFollowersCount = 50)),
+        )
+        assertNull(
+            question.filterReason(QualityFilterSettings(questionAnswerCount = 0, questionFollowersCount = 0)),
         )
     }
 }

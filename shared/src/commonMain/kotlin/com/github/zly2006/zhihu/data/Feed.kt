@@ -32,18 +32,16 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNames
 
 data class QualityFilterSettings(
-    val answerVoteupCount: Int = 10,
-    val articleVoteupCount: Int = 20,
     /**
-     * 为 0 时表示不按作者粉丝数过滤视频。视频的赞数阈值单独由 [videoVoteCount] 控制，
-     * 两个条件不再互相绑定，避免用户只想按赞数过滤时被迫接受粉丝数门槛。
+     * 统一的最低赞数阈值，适用于回答、文章、视频和想法，不再按内容类型分别配置。
+     * 为 0 时表示不按赞数过滤。
      */
-    val articleFollowersCount: Int = 0,
-    val videoVoteCount: Int = 20,
-    val pinLikeCount: Int = 10,
+    val minLikeCount: Int = 10,
+    /** 问题的最低回答数，为 0 时该条件不生效。 */
     val questionAnswerCount: Int = 5,
+    /** 问题的最低关注数，为 0 时该条件不生效。 */
     val questionFollowersCount: Int = 50,
-    /** 直接屏蔽所有视频卡片，不考虑赞数与作者粉丝数。 */
+    /** 直接屏蔽所有视频卡片，不考虑赞数。 */
     val blockVideo: Boolean = false,
     /** 直接屏蔽所有想法（Pin）卡片，不考虑点赞数。 */
     val blockPin: Boolean = false,
@@ -126,8 +124,12 @@ sealed interface Feed {
     ) : Target {
         override fun filterReason(): String? = filterReason(QualityFilterSettings())
 
-        fun filterReason(settings: QualityFilterSettings): String? = if (voteupCount >= 0 && voteupCount < settings.answerVoteupCount && author?.isFollowing == false) {
-            "规则：回答；赞数 < ${settings.answerVoteupCount}，未关注作者"
+        fun filterReason(settings: QualityFilterSettings): String? = if (settings.minLikeCount > 0 &&
+            voteupCount >= 0 &&
+            voteupCount < settings.minLikeCount &&
+            author?.isFollowing == false
+        ) {
+            "规则：回答；赞数 < ${settings.minLikeCount}，未关注作者"
         } else {
             null
         }
@@ -153,8 +155,8 @@ sealed interface Feed {
 
         fun filterReason(settings: QualityFilterSettings): String? = when {
             settings.blockVideo -> "规则：视频；已开启直接屏蔽视频"
-            settings.videoVoteCount > 0 && voteCount >= 0 && voteCount < settings.videoVoteCount && !author.isFollowing ->
-                "规则：视频；赞数 < ${settings.videoVoteCount}，未关注作者"
+            settings.minLikeCount > 0 && voteCount >= 0 && voteCount < settings.minLikeCount && !author.isFollowing ->
+                "规则：视频；赞数 < ${settings.minLikeCount}，未关注作者"
             else -> null
         }
 
@@ -198,14 +200,14 @@ sealed interface Feed {
     ) : Target {
         override fun filterReason(): String? = filterReason(QualityFilterSettings())
 
-        fun filterReason(settings: QualityFilterSettings): String? {
-            val followersTooLow = settings.articleFollowersCount > 0 && author.followersCount < settings.articleFollowersCount
-            val voteupTooLow = settings.articleVoteupCount > 0 && voteupCount >= 0 && voteupCount < settings.articleVoteupCount
-            return if ((followersTooLow || voteupTooLow) && !author.isFollowing) {
-                "规则：文章；作者粉丝数 < ${settings.articleFollowersCount} 或文章赞数 < ${settings.articleVoteupCount}，未关注作者"
-            } else {
-                null
-            }
+        fun filterReason(settings: QualityFilterSettings): String? = if (settings.minLikeCount > 0 &&
+            voteupCount >= 0 &&
+            voteupCount < settings.minLikeCount &&
+            !author.isFollowing
+        ) {
+            "规则：文章；赞数 < ${settings.minLikeCount}，未关注作者"
+        } else {
+            null
         }
 
         override val detailsText = "文章 · $voteupCount 赞 · $commentCount 评论"
@@ -240,8 +242,8 @@ sealed interface Feed {
 
         fun filterReason(settings: QualityFilterSettings): String? = when {
             settings.blockPin -> "规则：想法；已开启直接屏蔽想法"
-            settings.pinLikeCount > 0 && likeCount >= 0 && likeCount < settings.pinLikeCount && !author.isFollowing ->
-                "规则：想法；点赞数 < ${settings.pinLikeCount}，未关注作者"
+            settings.minLikeCount > 0 && likeCount >= 0 && likeCount < settings.minLikeCount && !author.isFollowing ->
+                "规则：想法；点赞数 < ${settings.minLikeCount}，未关注作者"
             else -> null
         }
 

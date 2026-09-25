@@ -84,7 +84,7 @@ class QualityFilterModeTest {
         val item = HomeFeedViewModel().createDisplayItem(
             object : FeedDisplayEnvironment {
                 override fun feedDisplaySettings() = FeedDisplaySettings(
-                    qualityFilter = QualityFilterSettings(articleVoteupCount = 1000),
+                    qualityFilter = QualityFilterSettings(minLikeCount = 1000),
                 )
             },
             lowQualityArticle.copy(target = (lowQualityArticle.target as Feed.ArticleTarget).copy(voteupCount = 500)),
