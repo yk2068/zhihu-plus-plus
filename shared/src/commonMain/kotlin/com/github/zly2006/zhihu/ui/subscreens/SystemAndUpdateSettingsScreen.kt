@@ -19,15 +19,12 @@ package com.github.zly2006.zhihu.ui.subscreens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -51,8 +48,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.navigation.LocalNavigator
@@ -73,11 +68,11 @@ internal const val MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY = "macosQuitOnWindo
 const val SYSTEM_SETTINGS_AIGC_MARKING_TAG = "system_settings_aigc_marking"
 
 /**
- * 系统、更新和外部服务设置页。
+ * 系统与外部服务设置页。
  *
- * 页面展示 GitHub Token、遥测、AIGC 标记、隐藏设置项和防沉迷提醒。
- * 更新相关状态与动作由细粒度平台能力提供，防沉迷间隔写入 [CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY]，
- * 改动时要同时考虑 Android 更新管理器和 Desktop 运行时。
+ * 页面展示遥测、AIGC 标记、隐藏设置项和防沉迷提醒。
+ * 防沉迷间隔写入 [CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY]，改动时要同时考虑
+ * Android 与 Desktop 两个运行时。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,42 +121,7 @@ fun SystemAndUpdateSettingsScreen(
                 .padding(innerPadding)
                 .padding(vertical = 16.dp),
         ) {
-            // GitHub Token。
-            var githubToken by remember { mutableStateOf(settings.getString("githubToken", "")) }
-            var showGithubToken by remember { mutableStateOf(false) }
-
             SettingItemGroup {
-                SettingItem(
-                    title = { Text("GitHub Token") },
-                    description = {
-                        Text(
-                            "用于访问 GitHub API 时解除限速。留空则使用匿名访问，部分请求可能会因限速失败。",
-                        )
-                    },
-                    settingKey = "githubToken",
-                    highlightedKey = highlightedSetting,
-                    bottomAction = {
-                        OutlinedTextField(
-                            value = githubToken,
-                            onValueChange = {
-                                githubToken = it
-                                settings.putString("githubToken", it)
-                            },
-                            visualTransformation = if (showGithubToken) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                IconButton(onClick = { showGithubToken = !showGithubToken }) {
-                                    Icon(
-                                        imageVector = if (showGithubToken) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                        contentDescription = null,
-                                    )
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                            singleLine = true,
-                        )
-                    },
-                )
-
                 if (platformName == "macOS") {
                     var quitOnWindowClose by remember {
                         mutableStateOf(settings.getBoolean(MACOS_QUIT_ON_WINDOW_CLOSE_PREFERENCE_KEY, false))
