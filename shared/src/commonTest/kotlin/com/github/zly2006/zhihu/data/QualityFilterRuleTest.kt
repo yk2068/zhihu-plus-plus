@@ -70,28 +70,42 @@ class QualityFilterRuleTest {
     )
 
     @Test
-    fun minLikeCountAppliesToEveryContentType() {
+    fun minLikeCountAppliesToAnswerArticleAndVideo() {
         val settings = QualityFilterSettings(minLikeCount = 10)
 
         assertEquals("规则：回答；赞数 < 10，未关注作者", answer(votes = 3).filterReason(settings))
         assertEquals("规则：文章；赞数 < 10，未关注作者", article(votes = 3).filterReason(settings))
         assertEquals("规则：视频；赞数 < 10，未关注作者", video(votes = 3).filterReason(settings))
-        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = 3).filterReason(settings))
 
         assertNull(answer(votes = 10).filterReason(settings))
         assertNull(article(votes = 10).filterReason(settings))
         assertNull(video(votes = 10).filterReason(settings))
-        assertNull(pin(likes = 10).filterReason(settings))
     }
 
     @Test
-    fun minLikeCountZeroDisablesTheRuleForEveryType() {
+    fun minLikeCountZeroDisablesTheRule() {
         val settings = QualityFilterSettings(minLikeCount = 0)
 
         assertNull(answer(votes = 0).filterReason(settings))
         assertNull(article(votes = 0).filterReason(settings))
         assertNull(video(votes = 0).filterReason(settings))
-        assertNull(pin(likes = 0).filterReason(settings))
+    }
+
+    @Test
+    fun pinIsNotFilteredByDefaultBecauseLikeCountIsOftenAbsent() {
+        // 很多想法卡片不返回点赞数，默认阈值必须放过它们，否则整个想法流会被误杀。
+        assertNull(pin(likes = 0).filterReason(QualityFilterSettings()))
+        assertNull(pin(likes = 0).filterReason(QualityFilterSettings(minLikeCount = 100)))
+    }
+
+    @Test
+    fun pinUsesItsOwnOptInThreshold() {
+        val settings = QualityFilterSettings(pinLikeCount = 10)
+
+        assertEquals("规则：想法；点赞数 < 10，未关注作者", pin(likes = 3).filterReason(settings))
+        assertNull(pin(likes = 10).filterReason(settings))
+        // 已关注作者不受阈值影响。
+        assertNull(pin(likes = 0, author = person(following = true)).filterReason(settings))
     }
 
     @Test
@@ -102,32 +116,32 @@ class QualityFilterRuleTest {
         assertNull(answer(votes = 0, author = followed).filterReason(settings))
         assertNull(article(votes = 0, author = followed).filterReason(settings))
         assertNull(video(votes = 0, author = followed).filterReason(settings))
-        assertNull(pin(likes = 0, author = followed).filterReason(settings))
     }
 
     @Test
     fun blockVideoIgnoresVoteCountAndFollowState() {
-        val settings = QualityFilterSettings(minLikeCount = 0, blockVideo = true)
+        val settings = QualityFilterSettings(blockVideo = true)
 
         assertEquals("规则：视频；已开启直接屏蔽视频", video(votes = 9999).filterReason(settings))
         assertEquals(
             "规则：视频；已开启直接屏蔽视频",
             video(votes = 9999, author = person(following = true)).filterReason(settings),
         )
-        // 只影响视频，其他类型不受牵连。
-        assertNull(answer(votes = 0).filterReason(settings))
+        // 只影响视频：把赞数阈值关掉后，回答不会因 blockVideo 被牵连。
+        assertNull(answer(votes = 0).filterReason(QualityFilterSettings(minLikeCount = 0, blockVideo = true)))
     }
 
     @Test
     fun blockPinIgnoresLikeCountAndFollowState() {
-        val settings = QualityFilterSettings(minLikeCount = 0, blockPin = true)
+        val settings = QualityFilterSettings(blockPin = true)
 
         assertEquals("规则：想法；已开启直接屏蔽想法", pin(likes = 9999).filterReason(settings))
         assertEquals(
             "规则：想法；已开启直接屏蔽想法",
             pin(likes = 9999, author = person(following = true)).filterReason(settings),
         )
-        assertNull(article(votes = 0).filterReason(settings))
+        // 只影响想法：把赞数阈值关掉后，文章不会因 blockPin 被牵连。
+        assertNull(article(votes = 0).filterReason(QualityFilterSettings(minLikeCount = 0, blockPin = true)))
     }
 
     @Test

@@ -554,8 +554,11 @@ enum class QualityFilterMode {
 
 const val QUALITY_FILTER_MODE_PREFERENCE_KEY = "qualityFilterMode"
 
-/** 统一的最低赞数阈值，适用于回答、文章、视频和想法，不再按内容类型分别配置。 */
+/** 统一的最低赞数阈值，适用于回答、文章和视频，不再按内容类型分别配置。 */
 const val MIN_LIKE_THRESHOLD_PREFERENCE_KEY = "minLikeThreshold"
+
+/** 想法的最低点赞数，默认 0（不过滤）：很多想法卡片不返回点赞数。 */
+const val PIN_LIKE_THRESHOLD_PREFERENCE_KEY = "pinLikeThreshold"
 const val QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY = "questionAnswerThreshold"
 const val QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY = "questionFollowersThreshold"
 const val BLOCK_VIDEO_PREFERENCE_KEY = "blockVideo"

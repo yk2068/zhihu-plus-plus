@@ -33,10 +33,17 @@ import kotlinx.serialization.json.JsonNames
 
 data class QualityFilterSettings(
     /**
-     * 统一的最低赞数阈值，适用于回答、文章、视频和想法，不再按内容类型分别配置。
-     * 为 0 时表示不按赞数过滤。
+     * 统一的最低赞数阈值，适用于回答、文章和视频；为 0 时表示不按赞数过滤。
+     * 想法不在此列，见 [pinLikeCount]。
      */
     val minLikeCount: Int = 10,
+    /**
+     * 想法的最低点赞数，默认 0（不过滤）。
+     *
+     * 想法单独用一个默认关闭的阈值：很多想法卡片不返回点赞数（likeCount 为 0），
+     * 若默认并入 [minLikeCount] 会把这类想法全部误判为低质量。
+     */
+    val pinLikeCount: Int = 0,
     /** 问题的最低回答数，为 0 时该条件不生效。 */
     val questionAnswerCount: Int = 5,
     /** 问题的最低关注数，为 0 时该条件不生效。 */
@@ -242,8 +249,10 @@ sealed interface Feed {
 
         fun filterReason(settings: QualityFilterSettings): String? = when {
             settings.blockPin -> "规则：想法；已开启直接屏蔽想法"
-            settings.minLikeCount > 0 && likeCount >= 0 && likeCount < settings.minLikeCount && !author.isFollowing ->
-                "规则：想法；点赞数 < ${settings.minLikeCount}，未关注作者"
+            // 想法默认不参与赞数过滤：很多想法卡片不返回点赞数，按默认阈值判定会把它们全部误杀。
+            // 需要按点赞数过滤想法时，把「想法最低赞数」显式设为大于 0 的值。
+            settings.pinLikeCount > 0 && likeCount >= 0 && likeCount < settings.pinLikeCount && !author.isFollowing ->
+                "规则：想法；点赞数 < ${settings.pinLikeCount}，未关注作者"
             else -> null
         }
 

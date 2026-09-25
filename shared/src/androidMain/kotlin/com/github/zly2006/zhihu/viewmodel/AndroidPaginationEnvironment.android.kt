@@ -243,6 +243,7 @@ open class SharedAndroidPaginationEnvironment(
         } ?: QualityFilterMode.RULES,
         qualityFilter = QualityFilterSettings(
             minLikeCount = settingsStore.getInt(MIN_LIKE_THRESHOLD_PREFERENCE_KEY, 10).coerceAtLeast(0),
+            pinLikeCount = settingsStore.getInt(PIN_LIKE_THRESHOLD_PREFERENCE_KEY, 0).coerceAtLeast(0),
             questionAnswerCount = settingsStore.getInt(QUESTION_ANSWER_THRESHOLD_PREFERENCE_KEY, 0).coerceAtLeast(0),
             questionFollowersCount = settingsStore.getInt(QUESTION_FOLLOWERS_THRESHOLD_PREFERENCE_KEY, 50).coerceAtLeast(0),
             blockVideo = settingsStore.getBoolean(BLOCK_VIDEO_PREFERENCE_KEY, false),
