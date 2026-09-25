@@ -37,12 +37,6 @@ import org.jetbrains.skia.Image
 import java.util.Base64
 import java.util.TimeZone
 
-actual val supportedLoginMethods: List<LoginMethod> = listOf(
-    LoginMethod.Phone,
-    LoginMethod.Qr,
-    LoginMethod.Web,
-)
-
 actual val isLoginRiskControlSupported: Boolean = true
 
 @Composable

@@ -26,11 +26,6 @@ import io.ktor.client.HttpClient
 import org.jetbrains.skia.Image
 import kotlin.io.encoding.Base64
 
-actual val supportedLoginMethods: List<LoginMethod> = listOf(
-    LoginMethod.Phone,
-    LoginMethod.Qr,
-)
-
 actual val isLoginRiskControlSupported: Boolean = false
 
 @Composable
