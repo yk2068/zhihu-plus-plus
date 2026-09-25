@@ -53,7 +53,8 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.github.zly2006.zhplus"
+        // 本地 fork 使用独立包名，避免与官方版签名冲突（同包名不同签名无法覆盖安装）。
+        applicationId = "com.github.zly2006.zhplus.fork"
         minSdk = 27
         targetSdk = 35
         versionCode = property("app.versionCode").toString().toIntOrNull() ?: 1
