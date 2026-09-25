@@ -41,12 +41,40 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
 import kotlin.reflect.typeOf
 
+/**
+ * 滑动到底部时额外预取的「未过滤」条目数。
+ *
+ * 过滤规则会把一部分条目替换成「已屏蔽」占位，如果只按页大小预取，用户快速下滑时
+ * 很容易滑到尚未加载的区域。多留 5 条缓冲可以让这一屏之后仍有内容可看。
+ */
+const val PREFETCH_UNFILTERED_MARGIN = 5
+
 abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var displayItems = mutableStateListOf<FeedDisplayItem>()
     internal var latestLoadedDisplayItems = mutableStateOf<List<FeedDisplayItem>>(emptyList())
     internal var completedPageCount by mutableIntStateOf(0)
     var isPullToRefresh by mutableStateOf(false)
         protected set
+
+    /**
+     * 已消费的未过滤条目数：滑动到底部时由 UI 上报，用来决定是否需要继续预取。
+     *
+     * 只在 [shouldPrefetchMore] 里作为基准使用，不影响分页游标本身。
+     */
+    var consumedUnfilteredCount by mutableIntStateOf(0)
+
+    /**
+     * 还需要的预取条数。
+     *
+     * 需求是「除了当前显示的，再多加载 5 条没被过滤的」：当已加载的可用条目相对
+     * 已消费量不足 [PREFETCH_UNFILTERED_MARGIN] 条时，就继续翻页，直到补足或翻到底。
+     */
+    val shouldPrefetchMore: Boolean
+        get() {
+            if (isEnd || isLoading) return false
+            val available = displayItems.count { !it.isFiltered }
+            return available - consumedUnfilteredCount < PREFETCH_UNFILTERED_MARGIN
+        }
 
     override fun processResponse(environment: PaginationEnvironment, data: List<Feed>, rawData: JsonArray) {
         super.processResponse(environment, data, rawData)
@@ -57,12 +85,14 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
 
     override fun refresh(environment: PaginationEnvironment) {
         displayItems.clear()
+        consumedUnfilteredCount = 0
         super.refresh(environment)
     }
 
     suspend fun pullToRefresh(environment: PaginationEnvironment) {
         isPullToRefresh = true
         displayItems.clear()
+        consumedUnfilteredCount = 0
         if (isLoading) return
         errorMessage = null
         debugData.clear()

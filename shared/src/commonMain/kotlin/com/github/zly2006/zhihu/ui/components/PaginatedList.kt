@@ -125,6 +125,7 @@ fun <T> PaginatedList(
     isEnd: () -> Boolean = { false },
     footer: @Composable ((LazyListState) -> Unit)? = null,
     key: ((T) -> Any)? = null,
+    onConsumedCountChanged: ((Int) -> Unit)? = null,
     topContent: LazyListScope.() -> Unit = {},
     bottomContent: LazyListScope.() -> Unit = {},
     itemContent: @Composable LazyItemScope.(T) -> Unit,
@@ -144,6 +145,17 @@ fun <T> PaginatedList(
                 lastVisibleItem.index >= layoutInfo.totalItemsCount - 3
             }
         }
+    }
+
+    // 上报「已经滑过去了多少条」，供调用方判断预取缓冲是否足够。
+    val consumedCount by remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf 0
+            lastVisible.index + 1
+        }
+    }
+    LaunchedEffect(consumedCount) {
+        onConsumedCountChanged?.invoke(consumedCount)
     }
 
     LaunchedEffect(shouldLoadMore, items.size, isEnd()) {

@@ -140,9 +140,10 @@ class HomeFeedStartupSnapshotTest {
 
         val restored = decodeHomeFeedStartupSnapshot(assertNotNull(encodeHomeFeedStartupSnapshot(items)))
 
-        assertEquals(10, restored.size)
+        // 快照上限为 30：既是启动首屏，也要覆盖「尚未显示」的一段，供下滑时直接取用。
+        assertEquals(30, restored.size)
         assertEquals("条目 0", restored.first().title)
-        assertEquals("条目 9", restored.last().title)
+        assertEquals("条目 29", restored.last().title)
     }
 
     @Test

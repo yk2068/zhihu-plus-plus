@@ -80,6 +80,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -159,6 +160,7 @@ import io.ktor.client.request.get
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
 import kotlinx.io.files.Path
@@ -335,32 +337,41 @@ fun HomeScreen(
         }
     }
 
-    // 初始加载
-    LaunchedEffect(currentRecommendationMode, account.login, autoRefreshOnStartup) {
+    // 预取缓冲：滑到底部后若「未过滤条目」相对已消费量不足 5 条，就继续翻页补足。
+    // 依赖 consumedUnfilteredCount 与 completedPageCount 一起触发，避免预取完成后不再复查。
+    LaunchedEffect(completedPageCount, viewModel.consumedUnfilteredCount) {
+        while (viewModel.shouldPrefetchMore) {
+            viewModel.loadMore(paginationEnvironment)
+            // loadMore 是异步的；等它落地后重新判断，isEnd 或 isLoading 会自然终止循环。
+            snapshotFlow { viewModel.isLoading }.first { !it }
+        }
+    }
+
+    // 初始加载：先用上次的启动快照把界面填上，再在后台刷新，避免启动时干等网络。
+    LaunchedEffect(currentRecommendationMode, account.login) {
         if (!account.login &&
             settings.getBoolean("loginForRecommendation", true)
         ) {
             requestLoginNavigation()
         } else if (viewModel.displayItems.isEmpty()) {
-            val cachedItems = if (autoRefreshOnStartup) {
-                emptyList()
-            } else {
-                withContext(Dispatchers.Default) {
-                    runCatching {
-                        if (SystemFileSystem.exists(startupCacheFile)) {
-                            SystemFileSystem.source(startupCacheFile).buffered().use { source ->
-                                decodeHomeFeedStartupSnapshot(source.readString())
-                            }
-                        } else {
-                            emptyList()
+            val cachedItems = withContext(Dispatchers.Default) {
+                runCatching {
+                    if (SystemFileSystem.exists(startupCacheFile)) {
+                        SystemFileSystem.source(startupCacheFile).buffered().use { source ->
+                            decodeHomeFeedStartupSnapshot(source.readString())
                         }
-                    }.getOrDefault(emptyList())
-                }
+                    } else {
+                        emptyList()
+                    }
+                }.getOrDefault(emptyList())
             }
-            if (viewModel.displayItems.isEmpty() && cachedItems.isNotEmpty()) {
+            // 缓存只覆盖「未显示的部分」：先展示，再决定是否立刻联网。
+            if (cachedItems.isNotEmpty()) {
                 viewModel.addDisplayItems(cachedItems)
-            } else if (viewModel.displayItems.isEmpty()) {
-                // 只在第一次加载时刷新，这样可以避免在返回时刷新
+                if (autoRefreshOnStartup) {
+                    viewModel.refresh(paginationEnvironment)
+                }
+            } else {
                 viewModel.refresh(paginationEnvironment)
             }
         }
@@ -645,6 +656,7 @@ fun HomeScreen(
                         bottom = innerPadding.calculateBottomPadding() + readingPlayerOverlayPadding,
                     ),
                     onLoadMore = { viewModel.loadMore(paginationEnvironment) },
+                    onConsumedCountChanged = { viewModel.consumedUnfilteredCount = it },
                     footer = ProgressIndicatorFooter,
                     key = { item -> item.stableKey },
                     topContent = {

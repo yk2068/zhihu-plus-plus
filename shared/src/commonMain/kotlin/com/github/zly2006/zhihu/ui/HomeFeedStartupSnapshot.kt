@@ -29,7 +29,13 @@ const val LEGACY_HOME_FEED_STARTUP_CACHE_FILE_NAME = "home_feed_startup_cache.js
 private const val HOME_FEED_STARTUP_CACHE_FILE_PREFIX = "home_feed_startup_cache_"
 private const val HOME_FEED_STARTUP_CACHE_FILE_SUFFIX = ".json"
 
-private const val HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS = 10
+/**
+ * 启动快照最多保留的条目数。
+ *
+ * 取 30 是为了让「已显示之外的缓存」也有内容：启动时先用快照填充列表，
+ * 用户下滑时仍有卡片可看，同时限制文件体积不至于过大。
+ */
+private const val HOME_FEED_STARTUP_SNAPSHOT_MAX_ITEMS = 30
 
 fun homeFeedStartupCacheFileName(recommendationMode: RecommendationMode): String =
     HOME_FEED_STARTUP_CACHE_FILE_PREFIX + recommendationMode.key + HOME_FEED_STARTUP_CACHE_FILE_SUFFIX
