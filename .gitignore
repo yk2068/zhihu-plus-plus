@@ -1,0 +1,67 @@
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log/OS Files
+*.log
+.DS_Store
+
+# Android Studio generated files and folders
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+output.json
+
+# IntelliJ
+*.iml
+.idea/
+!.idea/codeStyles/*
+!.idea/dictionaries/*
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+# Android Profiling
+*.hprof
+
+# Kotlin
+.kotlin/
+
+# Temporary files
+.tmp/
+.memory/*
+!.memory/.gitkeep
+__pycache__/
+
+# Oh my codex
+.omx/
+
+.worktrees
+
+# Local secrets
+.secret/
+.log/
+.codex/autoreview-state.json
+.codex/hooks/__pycache__/
+
+# IntelliJ generated apks
+app/lite
+app/full
+
+# Local replay corpus contains complete third-party Zhihu responses.
+shared/src/jvmTest/resources/zhihu-formula-corpus/raw/
+tools/zhihu-formula-corpus/
+
+# Local Maven publications are build inputs, never source dependencies.
+third_party/native-maven/
