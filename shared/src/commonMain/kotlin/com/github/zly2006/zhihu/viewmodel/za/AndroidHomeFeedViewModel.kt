@@ -27,12 +27,14 @@ import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
+import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
 import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
+import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.replaceHomeFeedItemsWithFilteredResult
@@ -72,6 +74,7 @@ class AndroidHomeFeedViewModel :
 
                 // 收集所有待显示的项目
                 val itemsToDisplay = mutableListOf<FeedDisplayItem>()
+                val displaySettings = environment.feedDisplaySettings()
 
                 data
                     .map { it.jsonObject }
@@ -84,12 +87,30 @@ class AndroidHomeFeedViewModel :
                         }
                     }
 
+                // 手机版推荐卡片由本方法直接构造，不经过 createDisplayItem，因此质量过滤在这里单独执行。
+                // 缺失这一步会导致「手机版推荐」下赞数/屏蔽视频等规则完全不生效。
+                val qualityFilteredItems = if (displaySettings.qualityFilterMode == QualityFilterMode.OFF) {
+                    itemsToDisplay
+                } else {
+                    itemsToDisplay.mapNotNull { item ->
+                        val feed = item.feed ?: return@mapNotNull item
+                        val filtered = createDisplayItem(environment, feed)
+                        // 保留手机版解析出的展示字段（标题/摘要/详情来自卡片本身），只接管过滤结果。
+                        if (filtered.isQualityFiltered) filtered else item
+                    }
+                }
+
+                val hideQualityFiltered =
+                    displaySettings.qualityFilterMode == QualityFilterMode.HIDE
+
                 // 前台先做本地已读过滤，再立即展示
-                val reverseBlock = environment.feedDisplaySettings().reverseBlock
-                val foregroundItems = environment.applyForegroundHomeFeedFilter(itemsToDisplay)
+                val reverseBlock = displaySettings.reverseBlock
+                val foregroundItems = environment.applyForegroundHomeFeedFilter(qualityFilteredItems)
                 if (!reverseBlock) {
                     withContext(Dispatchers.Main) {
-                        addDisplayItems(foregroundItems)
+                        addDisplayItems(
+                            if (hideQualityFiltered) foregroundItems.filterNot { it.isQualityFiltered } else foregroundItems,
+                        )
                     }
                 }
 
@@ -201,13 +222,17 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         children.joStrMatch("id", "Text")["text"]!!.jsonPrimitive.content
     }
     val summary = children.joStrMatch("id", "text_pin_summary")["text"]!!.jsonPrimitive.content
-    val footer = children.filter { it["type"]!!.jsonPrimitive.content == "Line" }.getOrNull(1) ?: return null
+    // 页脚是第二个 type == "Line" 的子节点；用安全取值，避免个别卡片缺少 type 字段时整个条目被丢弃。
+    val footer = children
+        .filter { it["type"]?.jsonPrimitive?.content == "Line" }
+        .getOrNull(1) ?: return null
     val footerLine = footer["elements"]!!.jsonArray.map { it.jsonObject }
     val voteUp = footerLine.firstOrNull { it["reaction"]?.jsonPrimitive?.content == "Vote" }
     val comment = footerLine.firstOrNull { it["reaction"]?.jsonPrimitive?.content == "Comment" }
     val collect = footerLine.firstOrNull { it["reaction"]?.jsonPrimitive?.content == "Collect" }
+    // 赞数在质量过滤里要用到；页脚没有 Vote 反应时视为未知（-1），交由过滤规则决定是否参与判断。
+    val voteUpCount = voteUp?.get("count")?.jsonPrimitive?.int ?: -1
     val footerText = if (voteUp != null && comment != null && collect != null) {
-        val voteUpCount = voteUp["count"]!!.jsonPrimitive.int
         val commentCount = comment["count"]!!.jsonPrimitive.int
         val collectCount = collect["count"]!!.jsonPrimitive.int
         "$voteUpCount 赞同 · $commentCount 评论 · $collectCount 收藏"
@@ -216,12 +241,13 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
     }
     val lineAuthor =
         children
-            .first {
-                it["style"]!!.jsonPrimitive.content.startsWith("RecommendAuthorLine") ||
-                    it["style"]!!.jsonPrimitive.content.startsWith("LineAuthor_default")
-            }["elements"]!!
-            .jsonArray
-            .map { it.jsonObject }
+            .firstOrNull {
+                val style = it["style"]?.jsonPrimitive?.content ?: return@firstOrNull false
+                style.startsWith("RecommendAuthorLine") || style.startsWith("LineAuthor_default")
+            }?.get("elements")
+            ?.jsonArray
+            ?.map { it.jsonObject }
+            ?: return null
     val avatar = lineAuthor
         .joStrMatch("style", "Avatar_default")["image"]!!
         .jsonObject["url"]!!
@@ -232,52 +258,93 @@ fun parseMobileHomeFeedDisplayItem(card: JsonObject): FeedDisplayItem? {
         routeDest.title = title
         routeDest.avatarSrc = avatar
     }
-    val feed = if (routeDest is Pin) {
-        val author = extra?.passthroughInfo?.author
-        CommonFeed(
-            id = card["id"]?.jsonPrimitive?.content.orEmpty(),
-            target = Feed.PinTarget(
-                id = routeDest.id,
-                url = routeUrl,
-                author = Person(
-                    id = author?.id.orEmpty(),
-                    url = author?.url.orEmpty(),
-                    userType = "people",
-                    urlToken = author?.urlToken,
-                    name = authorName,
-                    headline = "",
-                    avatarUrl = avatar,
-                    isFollowing = author?.isFollowing == true,
-                    isFollowed = author?.isFollowed == true,
+    val feed = when (routeDest) {
+        is Pin -> {
+            val author = extra?.passthroughInfo?.author
+            CommonFeed(
+                id = card["id"]?.jsonPrimitive?.content.orEmpty(),
+                target = Feed.PinTarget(
+                    id = routeDest.id,
+                    url = routeUrl,
+                    author = Person(
+                        id = author?.id.orEmpty(),
+                        url = author?.url.orEmpty(),
+                        userType = "people",
+                        urlToken = author?.urlToken,
+                        name = authorName,
+                        headline = "",
+                        avatarUrl = avatar,
+                        isFollowing = author?.isFollowing == true,
+                        isFollowed = author?.isFollowed == true,
+                    ),
+                    content = buildList {
+                        add(DataHolder.Pin.ContentText(title = title, content = summary))
+                        originalContent
+                            ?.mediaInfo
+                            ?.images
+                            .orEmpty()
+                            .filter { it.url.isNotBlank() }
+                            .forEachIndexed { index, image ->
+                                add(
+                                    DataHolder.Pin.ContentImage(
+                                        url = image.url,
+                                        thumbnail = extra
+                                            ?.businessExtMap
+                                            ?.images
+                                            ?.getOrNull(index)
+                                            ?.url
+                                            .orEmpty(),
+                                        width = image.width,
+                                        height = image.height,
+                                    ),
+                                )
+                            }
+                    },
+                    likeCount = voteUpCount,
+                    excerptTitle = summary,
                 ),
-                content = buildList {
-                    add(DataHolder.Pin.ContentText(title = title, content = summary))
-                    originalContent
-                        ?.mediaInfo
-                        ?.images
-                        .orEmpty()
-                        .filter { it.url.isNotBlank() }
-                        .forEachIndexed { index, image ->
-                            add(
-                                DataHolder.Pin.ContentImage(
-                                    url = image.url,
-                                    thumbnail = extra
-                                        ?.businessExtMap
-                                        ?.images
-                                        ?.getOrNull(index)
-                                        ?.url
-                                        .orEmpty(),
-                                    width = image.width,
-                                    height = image.height,
-                                ),
-                            )
-                        }
-                },
-                excerptTitle = summary,
-            ),
-        )
-    } else {
-        null
+            )
+        }
+
+        // 手机版卡片同样要能参与质量过滤，因此为非想法类型补出带赞数的 target。
+        // 回答在导航层也表示为 Article（type = Answer），这里按 type 分成两种 target。
+        is Article -> {
+            val cardAuthor = mobileCardAuthor(authorName, avatar)
+            if (cardAuthor == null) {
+                // 没有作者信息时无法判断「是否已关注」，不做过滤，保持原样展示。
+                null
+            } else if (routeDest.type == ArticleType.Answer) {
+                CommonFeed(
+                    id = card["id"]?.jsonPrimitive?.content.orEmpty(),
+                    target = Feed.AnswerTarget(
+                        id = routeDest.id,
+                        url = routeUrl,
+                        author = cardAuthor,
+                        voteupCount = voteUpCount,
+                        excerpt = summary,
+                        question = Feed.QuestionTarget(
+                            id = routeDest.id,
+                            url = routeUrl,
+                            type = "question",
+                        ),
+                    ),
+                )
+            } else {
+                CommonFeed(
+                    id = card["id"]?.jsonPrimitive?.content.orEmpty(),
+                    target = Feed.ArticleTarget(
+                        id = routeDest.id,
+                        url = routeUrl,
+                        author = cardAuthor,
+                        voteupCount = voteUpCount,
+                        title = title,
+                        excerpt = summary,
+                    ),
+                )
+            }
+        }
+
+        else -> null
     }
 
     return FeedDisplayItem(
@@ -339,6 +406,24 @@ private data class MobileHomeImage(
     val width: Int = 0,
     val height: Int = 0,
 )
+
+/**
+ * 手机版推荐卡片只提供作者名和头像，没有稳定的作者 id。
+ *
+ * 质量过滤只读取 `isFollowing`（已关注作者豁免）和展示用的名称/头像，
+ * 因此这里用作者名兜底作为 id；没有作者信息时返回 null，表示「未知作者」。
+ */
+private fun mobileCardAuthor(authorName: String, avatar: String): Person? {
+    if (authorName.isBlank()) return null
+    return Person(
+        id = authorName,
+        url = "",
+        userType = "people",
+        name = authorName,
+        headline = "",
+        avatarUrl = avatar,
+    )
+}
 
 /**
  * Find the first JsonObject in the list where the value associated with [key] matches [value].
