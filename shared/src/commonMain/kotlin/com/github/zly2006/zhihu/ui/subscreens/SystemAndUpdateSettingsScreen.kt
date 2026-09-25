@@ -65,6 +65,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.settings.HideableSettingGroup
+import com.github.zly2006.zhihu.ui.settings.rememberGroupHidden
 import com.github.zly2006.zhihu.util.ContinuousUsageReminderPolicy
 
 internal const val CONTINUOUS_USAGE_REMINDER_INTERVAL_MINUTES_KEY = "continuousUsageReminderIntervalMinutes"
@@ -212,22 +213,20 @@ fun SystemAndUpdateSettingsScreen(
                 )
             }
 
-            // 隐藏设置项：关闭对应入口的显示，只影响账号页入口可见性，不改动被隐藏设置本身的值。
+            // 隐藏设置项：关闭对应入口的显示。只影响账号页入口可见性，不改动被隐藏设置本身的值。
+            // 「系统与更新」不在此列——它就是本页入口，隐藏后用户将无法恢复任何入口。
             SettingItemGroup(
                 title = "隐藏设置项",
-                footer = { Text("隐藏后账号页不再显示对应入口；被隐藏入口会在原位置留一个「已隐藏」提示，点它即可恢复。") },
+                footer = { Text("开启后账号页不再显示对应入口；被隐藏入口会在原位置留一条「已隐藏」提示，点它即可恢复。") },
             ) {
                 HideableSettingGroup.all.forEach { group ->
-                    val hidden = settings.getBoolean(group.preferenceKey, false)
-                    var checked by remember(group.preferenceKey) { mutableStateOf(hidden) }
+                    val (checked, setChecked) = rememberGroupHidden(group)
                     SettingItemWithSwitch(
+                        modifier = Modifier.testTag("systemSettings:hide:${group.preferenceKey}"),
                         title = { Text(group.title) },
                         description = { Text(group.description) },
                         checked = checked,
-                        onCheckedChange = {
-                            checked = it
-                            settings.putBoolean(group.preferenceKey, it)
-                        },
+                        onCheckedChange = setChecked,
                         settingKey = group.preferenceKey,
                         highlightedKey = highlightedSetting,
                     )

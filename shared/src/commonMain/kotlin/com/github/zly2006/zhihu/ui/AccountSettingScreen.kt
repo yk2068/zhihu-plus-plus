@@ -50,7 +50,6 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwitchAccount
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -91,6 +90,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
+import com.github.zly2006.zhihu.ui.settings.HiddenSettingPlaceholder
 import com.github.zly2006.zhihu.ui.settings.HideableSettingGroup
 import com.github.zly2006.zhihu.ui.settings.rememberGroupHidden
 import com.github.zly2006.zhihu.ui.subscreens.BOTTOM_BAR_ITEMS_PREFERENCE_KEY
@@ -448,22 +448,32 @@ fun AccountSettingScreen(
 
             SettingItemGroup {
                 if (data.login) {
-                    SettingItem(
-                        title = { Text("身份管理") },
-                        description = { Text("创建马甲号或切换当前账号") },
-                        icon = { Icon(Icons.Default.SwitchAccount, null) },
-                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG),
-                        onClick = { navigator.onNavigate(Account.IdentityManagement) },
-                    )
+                    val (identityHidden, setIdentityHidden) = rememberGroupHidden(HideableSettingGroup.IDENTITY_MANAGEMENT)
+                    if (!identityHidden) {
+                        SettingItem(
+                            title = { Text(HideableSettingGroup.IDENTITY_MANAGEMENT.title) },
+                            description = { Text(HideableSettingGroup.IDENTITY_MANAGEMENT.description) },
+                            icon = { Icon(Icons.Default.SwitchAccount, null) },
+                            modifier = Modifier.testTag(ACCOUNT_SETTINGS_IDENTITY_MANAGEMENT_TAG),
+                            onClick = { navigator.onNavigate(Account.IdentityManagement) },
+                        )
+                    } else {
+                        HiddenSettingPlaceholder(HideableSettingGroup.IDENTITY_MANAGEMENT) { setIdentityHidden(false) }
+                    }
                 }
 
-                SettingItem(
-                    title = { Text("外观与阅读体验") },
-                    description = { Text("主题颜色、字体大小等") },
-                    icon = { Icon(Icons.Default.Palette, null) },
-                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
-                    onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
-                )
+                val (appearanceHidden, setAppearanceHidden) = rememberGroupHidden(HideableSettingGroup.APPEARANCE)
+                if (!appearanceHidden) {
+                    SettingItem(
+                        title = { Text(HideableSettingGroup.APPEARANCE.title) },
+                        description = { Text(HideableSettingGroup.APPEARANCE.description) },
+                        icon = { Icon(Icons.Default.Palette, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_APPEARANCE_TAG),
+                        onClick = { navigator.onNavigate(Account.AppearanceSettings()) },
+                    )
+                } else {
+                    HiddenSettingPlaceholder(HideableSettingGroup.APPEARANCE) { setAppearanceHidden(false) }
+                }
 
                 val (readingHidden, setReadingHidden) = rememberGroupHidden(HideableSettingGroup.READING)
                 if (readingPlayerSupported && !readingHidden) {
@@ -474,40 +484,43 @@ fun AccountSettingScreen(
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_READING_TAG),
                         onClick = { navigator.onNavigate(Account.ReadingSettings) },
                     )
+                } else if (readingPlayerSupported) {
+                    HiddenSettingPlaceholder(HideableSettingGroup.READING) { setReadingHidden(false) }
                 }
-                // 隐藏入口后必须留一个可回到设置的路径，否则用户无法自行恢复。
-                if (readingPlayerSupported && readingHidden) {
+
+                val (recommendHidden, setRecommendHidden) = rememberGroupHidden(HideableSettingGroup.RECOMMEND)
+                if (!recommendHidden) {
                     SettingItem(
-                        title = { Text("已隐藏「${HideableSettingGroup.READING.title}」") },
-                        description = { Text("该设置入口已被隐藏，点此恢复显示") },
-                        icon = { Icon(Icons.Default.VisibilityOff, null) },
-                        onClick = { setReadingHidden(false) },
+                        title = { Text(HideableSettingGroup.RECOMMEND.title) },
+                        description = { Text(HideableSettingGroup.RECOMMEND.description) },
+                        icon = { Icon(Icons.Default.FilterAlt, null) },
+                        modifier = Modifier.testTag(ACCOUNT_SETTINGS_RECOMMEND_TAG),
+                        onClick = { navigator.onNavigate(Account.RecommendSettings()) },
                     )
+                } else {
+                    HiddenSettingPlaceholder(HideableSettingGroup.RECOMMEND) { setRecommendHidden(false) }
                 }
 
-                SettingItem(
-                    title = { Text("推荐系统与内容过滤") },
-                    description = { Text("推荐、智能过滤、关键词屏蔽等") },
-                    icon = { Icon(Icons.Default.FilterAlt, null) },
-                    modifier = Modifier.testTag(ACCOUNT_SETTINGS_RECOMMEND_TAG),
-                    onClick = { navigator.onNavigate(Account.RecommendSettings()) },
-                )
-
+                // 系统与更新固定展示：隐藏设置项本身在这里，隐藏它会让所有入口都无法恢复。
                 SettingItem(
                     title = { Text("系统与更新") },
-                    description = { Text("GitHub、更新设置等") },
+                    description = { Text("GitHub、遥测与隐藏设置项") },
                     icon = { Icon(Icons.Default.Settings, null) },
                     modifier = Modifier.testTag(ACCOUNT_SETTINGS_SYSTEM_TAG),
                     onClick = { navigator.onNavigate(Account.SystemAndUpdateSettings()) },
                 )
 
-                AnimatedVisibility(isDeveloper) {
+                val (developerHidden, setDeveloperHidden) = rememberGroupHidden(HideableSettingGroup.DEVELOPER)
+                AnimatedVisibility(isDeveloper && !developerHidden) {
                     SettingItem(
-                        title = { Text("开发者选项") },
+                        title = { Text(HideableSettingGroup.DEVELOPER.title) },
                         icon = { Icon(Icons.Default.Code, null) },
                         modifier = Modifier.testTag(ACCOUNT_SETTINGS_DEVELOPER_TAG),
                         onClick = { navigator.onNavigate(Account.DeveloperSettings) },
                     )
+                }
+                AnimatedVisibility(isDeveloper && developerHidden) {
+                    HiddenSettingPlaceholder(HideableSettingGroup.DEVELOPER) { setDeveloperHidden(false) }
                 }
             }
         }

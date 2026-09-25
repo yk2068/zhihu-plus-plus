@@ -17,6 +17,10 @@
 
 package com.github.zly2006.zhihu.ui.settings
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,25 +28,48 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.ui.components.SettingItem
 
 /**
- * 可被用户隐藏的设置分组。
+ * 可被用户隐藏的账号页设置入口。
  *
- * 每一项对应账号页上的一个设置入口。隐藏只影响入口是否展示，不改变对应设置项的值，
- * 也不影响这些设置的运行时行为；重新打开显示即可恢复入口。
+ * 按需求，除「系统与更新」外的所有设置入口都支持隐藏：系统与更新页承载隐藏设置项本身，
+ * 隐藏它会让用户失去恢复其他入口的唯一途径，因此固定展示。
  *
- * 新增可隐藏入口时在这里加一个枚举项，并在 [HiddenSettingsState] 里补上读写分支，
- * 不要在设置页里散写 preference key。
+ * 隐藏只影响入口是否展示，不改变对应设置项的值，也不影响这些设置的运行时行为；
+ * 已隐藏的入口会在原位置留一条「已隐藏」提示，点它即可恢复显示。
+ *
+ * 新增可隐藏入口时在这里加一个枚举项即可，不要在设置页里散写 preference key。
  */
 enum class HideableSettingGroup(
     val preferenceKey: String,
     val title: String,
     val description: String,
 ) {
+    IDENTITY_MANAGEMENT(
+        preferenceKey = "hideSettingIdentityManagement",
+        title = "身份管理",
+        description = "创建马甲号或切换当前账号",
+    ),
+    APPEARANCE(
+        preferenceKey = "hideSettingAppearance",
+        title = "外观与阅读体验",
+        description = "主题颜色、字体大小等",
+    ),
     READING(
         preferenceKey = "hideSettingReading",
         title = "朗读与播放",
         description = "朗读内容、播放队列与条目过渡",
+    ),
+    RECOMMEND(
+        preferenceKey = "hideSettingRecommend",
+        title = "推荐系统与内容过滤",
+        description = "推荐、智能过滤、关键词屏蔽等",
+    ),
+    DEVELOPER(
+        preferenceKey = "hideSettingDeveloper",
+        title = "开发者选项",
+        description = "调试、签名、Cookie 和实验入口",
     ),
     ;
 
@@ -54,7 +81,7 @@ enum class HideableSettingGroup(
 /**
  * 隐藏设置项的持久化状态。
  *
- * 隐藏是纯本地偏好：读取时缺省为「显示」，写入时只保存被隐藏的分组，语义与设置页开关一致。
+ * 隐藏是纯本地偏好：读取时缺省为「显示」，写入时只保存被隐藏的入口。
  */
 class HiddenSettingsState internal constructor(
     private val settings: SettingsStore,
@@ -78,9 +105,9 @@ fun rememberHiddenSettingsState(): HiddenSettingsState {
 }
 
 /**
- * 供 Compose 直接观察某个分组是否被隐藏。
+ * 供 Compose 观察某个入口是否被隐藏，并写回改动。
  *
- * 账号页用它控制入口可见性：设置页写回后需要重组账号页，所以这里用可变状态而不是一次性读取。
+ * 账号页用它控制入口可见性：设置页写回后账号页需要重组，所以这里用可变状态而不是一次性读取。
  */
 @Composable
 fun rememberGroupHidden(group: HideableSettingGroup): Pair<Boolean, (Boolean) -> Unit> {
@@ -93,4 +120,22 @@ fun rememberGroupHidden(group: HideableSettingGroup): Pair<Boolean, (Boolean) ->
         settings.putBoolean(group.preferenceKey, value)
     }
     return hidden to update
+}
+
+/**
+ * 已隐藏入口在原位置留下的提示行。
+ *
+ * 入口被隐藏后必须仍有一条回到「显示」的路径，否则用户只能去改偏好文件才能找回设置页。
+ */
+@Composable
+fun HiddenSettingPlaceholder(
+    group: HideableSettingGroup,
+    onRestore: () -> Unit,
+) {
+    SettingItem(
+        title = { Text("已隐藏「${group.title}」") },
+        description = { Text("该设置入口已被隐藏，点此恢复显示") },
+        icon = { Icon(Icons.Default.VisibilityOff, null) },
+        onClick = onRestore,
+    )
 }
