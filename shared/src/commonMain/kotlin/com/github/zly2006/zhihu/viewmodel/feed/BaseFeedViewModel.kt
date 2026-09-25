@@ -234,8 +234,14 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
  * with the same [FeedDisplayItem.stableKey]. This lets delayed quality/content filters swap an already
  * rendered card with an `已屏蔽` placeholder while preserving existing raw content if the replacement has not
  * loaded one. Reverse-block mode is intentionally ignored because it renders filtered items directly.
+ *
+ * [dropQualityFiltered] 对应「隐藏」模式：命中质量规则的条目已经在 [BaseFeedViewModel.addDisplayItems]
+ * 里被丢弃，这里同样不能再写回列表，否则卡片会被重新加回来——表现为「选了隐藏却仍显示已屏蔽」。
  */
-internal fun MutableList<FeedDisplayItem>.replaceHomeFeedItemsWithFilteredResult(filterResult: HomeFeedFilterResult) {
+internal fun MutableList<FeedDisplayItem>.replaceHomeFeedItemsWithFilteredResult(
+    filterResult: HomeFeedFilterResult,
+    dropQualityFiltered: Boolean = false,
+) {
     if (filterResult.reverseBlock) return
 
     val foregroundKeys = filterResult.foregroundItems.map { it.stableKey }.toSet()
@@ -249,7 +255,7 @@ internal fun MutableList<FeedDisplayItem>.replaceHomeFeedItemsWithFilteredResult
         }
 
         val filteredVersion = filteredItemsByKey[item.stableKey]
-        if (filteredVersion == null) {
+        if (filteredVersion == null || (dropQualityFiltered && item.isQualityFiltered)) {
             removeAt(index)
         } else {
             this[index] = filteredVersion.copy(raw = filteredVersion.raw ?: item.raw)

@@ -24,6 +24,7 @@ import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.viewmodel.FeedDisplayEnvironment
 import com.github.zly2006.zhihu.viewmodel.FeedDisplaySettings
+import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -137,5 +138,61 @@ class QualityFilterModeTest {
 
         assertEquals(1, model.displayItems.size)
         assertEquals("已屏蔽", model.displayItems.single().title)
+    }
+
+    /**
+     * HIDE 模式下，后置的前台/后台过滤结果不能把已丢弃的卡片重新写回列表。
+     *
+     * 回归背景：`replaceHomeFeedItemsWithFilteredResult` 会把 `foregroundItems` 里的条目
+     * 写回 `displayItems`，而 `foregroundItems` 仍然包含命中质量规则的卡片。
+     * 于是「先丢弃、再写回」，用户看到的就是「选了隐藏却仍显示已屏蔽」。
+     */
+    @Test
+    fun hideModeDoesNotResurrectDroppedItemsDuringForegroundMerge() {
+        val filteredKeyItem = FeedDisplayItem(
+            title = "已屏蔽",
+            summary = "低质量",
+            details = "低质量",
+            feed = null,
+            isFiltered = true,
+            isQualityFiltered = true,
+        )
+        val keptItem = FeedDisplayItem(title = "正常条目", summary = "摘要", details = "详情", feed = null)
+        val list = mutableListOf(keptItem)
+
+        val result = HomeFeedFilterResult(
+            foregroundItems = listOf(filteredKeyItem, keptItem),
+            filteredItems = listOf(filteredKeyItem, keptItem),
+            reverseBlock = false,
+        )
+
+        list.replaceHomeFeedItemsWithFilteredResult(result, dropQualityFiltered = true)
+
+        assertEquals(1, list.size)
+        assertEquals("正常条目", list.single().title)
+    }
+
+    @Test
+    fun rulesModeStillMergesFilteredPlaceholder() {
+        val filteredKeyItem = FeedDisplayItem(
+            title = "已屏蔽",
+            summary = "低质量",
+            details = "低质量",
+            feed = null,
+            isFiltered = true,
+            isQualityFiltered = true,
+        )
+        val list = mutableListOf(filteredKeyItem)
+
+        val result = HomeFeedFilterResult(
+            foregroundItems = listOf(filteredKeyItem),
+            filteredItems = listOf(filteredKeyItem),
+            reverseBlock = false,
+        )
+
+        list.replaceHomeFeedItemsWithFilteredResult(result, dropQualityFiltered = false)
+
+        assertEquals(1, list.size)
+        assertEquals("已屏蔽", list.single().title)
     }
 }

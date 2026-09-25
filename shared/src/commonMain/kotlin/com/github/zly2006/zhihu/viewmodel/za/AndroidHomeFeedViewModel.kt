@@ -123,9 +123,13 @@ class AndroidHomeFeedViewModel :
                     reverseBlock = reverseBlock,
                 )
 
-                // 移除被过滤的条目，并更新已保留条目的 raw 内容
+                // 移除被过滤的条目，并更新已保留条目的 raw 内容。
+                // HIDE 模式下被丢弃的条目不能在这里被重新写回。
                 withContext(Dispatchers.Main) {
-                    displayItems.replaceHomeFeedItemsWithFilteredResult(filterResult)
+                    displayItems.replaceHomeFeedItemsWithFilteredResult(
+                        filterResult,
+                        dropQualityFiltered = displaySettings.qualityFilterMode == QualityFilterMode.HIDE,
+                    )
                     latestLoadedDisplayItems.value = filterResult.filteredItems
                 }
 

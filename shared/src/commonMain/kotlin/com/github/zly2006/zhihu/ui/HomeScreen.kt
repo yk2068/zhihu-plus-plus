@@ -366,8 +366,15 @@ fun HomeScreen(
                 }.getOrDefault(emptyList())
             }
             // 缓存只覆盖「未显示的部分」：先展示，再决定是否立刻联网。
+            // HIDE 模式下快照里可能残留上次判定为「已屏蔽」的条目，这里同样要丢弃。
             if (cachedItems.isNotEmpty()) {
-                viewModel.addDisplayItems(cachedItems)
+                viewModel.addDisplayItems(
+                    cachedItems,
+                    dropQualityFiltered = settings.getString(
+                        QUALITY_FILTER_MODE_PREFERENCE_KEY,
+                        QualityFilterMode.RULES.name,
+                    ) == QualityFilterMode.HIDE.name,
+                )
                 if (autoRefreshOnStartup) {
                     viewModel.refresh(paginationEnvironment)
                 }
