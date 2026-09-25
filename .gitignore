@@ -29,6 +29,10 @@ render.experimental.xml
 *.jks
 *.keystore
 
+# 本地签名材料：signingKey.b64 是密钥库的 base64 编码，等同私钥本身，
+# 绝不能进版本库。整个目录一起忽略，避免以后新增的文件漏掉。
+.local-signing/
+
 # Google Services (e.g. APIs or Firebase)
 google-services.json
 
