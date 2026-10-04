@@ -27,11 +27,14 @@ import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.Log
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
+import com.github.zly2006.zhihu.viewmodel.local.ContentDetailDiskCache
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
@@ -40,6 +43,13 @@ import kotlin.time.Clock
  * 避免对同一内容发起重复的 API 请求
  */
 object ContentDetailCache {
+    /**
+     * 可选的磁盘缓存后端。
+     * 由平台在启动/创建 PaginationEnvironment 时注入（见各端 PaginationEnvironment 的 init 块）。
+     * 一旦设置，已进入显示列表的内容详情会写入磁盘，下次冷启动优先从本地读取。
+     */
+    var diskCache: ContentDetailDiskCache? = null
+
     private data class CacheEntry(
         val content: DataHolder.Content,
         val timestamp: Long,
@@ -77,8 +87,20 @@ object ContentDetailCache {
             }
         }
 
-        // 缓存未命中，从 API 获取
-        Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
+    // 内存未命中，尝试从磁盘缓存读取（冷启动优先，跳过网络请求）
+    diskCache?.read(contentType, contentId)?.let { rawJsonStr ->
+        val diskContent = runCatching {
+            parseRawContent(navDestination, Json.parseToJsonElement(rawJsonStr).jsonObject)
+        }.getOrNull() ?: return@let
+        Log.d("ContentDetailCache", "Disk cache hit for $contentType:$contentId")
+        mutex.withLock {
+            cache[key] = CacheEntry(diskContent, Clock.System.now().toEpochMilliseconds())
+        }
+        return diskContent
+    }
+
+    // 缓存未命中，从 API 获取
+    Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
         val content = fetcher(navDestination) ?: return null
 
         // 存入缓存
@@ -94,25 +116,26 @@ object ContentDetailCache {
         return content
     }
 
-    /**
-     * 从 NavDestination 提取内容类型和 ID
-     */
-    private fun extractContentInfo(navDestination: NavDestination): Pair<String, String>? = when (navDestination) {
-        is Article -> {
-            val type = when (navDestination.type) {
-                ArticleType.Answer -> "answer"
-                ArticleType.Article -> "article"
-            }
-            Pair(type, navDestination.id.toString())
+}
+
+/**
+ * 从 NavDestination 提取内容类型和 ID（文件级私有，object 成员与扩展函数均可访问）。
+ */
+private fun extractContentInfo(navDestination: NavDestination): Pair<String, String>? = when (navDestination) {
+    is Article -> {
+        val type = when (navDestination.type) {
+            ArticleType.Answer -> "answer"
+            ArticleType.Article -> "article"
         }
-        is Question -> {
-            Pair("question", navDestination.questionId.toString())
-        }
-        is Pin -> {
-            Pair("pin", navDestination.id.toString())
-        }
-        else -> null
+        Pair(type, navDestination.id.toString())
     }
+    is Question -> {
+        Pair("question", navDestination.questionId.toString())
+    }
+    is Pin -> {
+        Pair("pin", navDestination.id.toString())
+    }
+    else -> null
 }
 
 fun zhihuContentDetailUrl(destination: NavDestination): String? = when (destination) {
@@ -140,17 +163,28 @@ fun zhihuContentDetailInclude(destination: NavDestination): String = when (desti
 suspend fun fetchZhihuContentDetail(
     destination: NavDestination,
     fetchJson: suspend (String, String) -> JsonObject?,
-): DataHolder.Content? {
-    val url = zhihuContentDetailUrl(destination) ?: return null
+): Pair<DataHolder.Content?, JsonObject?> {
+    val url = zhihuContentDetailUrl(destination) ?: return null to null
     val include = zhihuContentDetailInclude(destination)
-    val json = fetchJson(url, include) ?: return null
+    val json = fetchJson(url, include) ?: return null to null
 
-    return when (destination) {
+    val content = when (destination) {
         is Article -> decodeArticleContentDetail(destination, json)
         is Question -> decodeQuestionContentDetail(json)
         is Pin -> decodePinContentDetail(json)
         else -> null
     }
+    return content to json
+}
+
+/**
+ * 将 API 返回的原始详情 JSON 解码为 [DataHolder.Content]，供磁盘缓存回读使用。
+ */
+private fun parseRawContent(destination: NavDestination, json: JsonObject): DataHolder.Content? = when (destination) {
+    is Article -> decodeArticleContentDetail(destination, json)
+    is Question -> decodeQuestionContentDetail(json)
+    is Pin -> decodePinContentDetail(json)
+    else -> null
 }
 
 suspend fun ContentDetailCache.getOrFetchContentDetail(
@@ -159,7 +193,12 @@ suspend fun ContentDetailCache.getOrFetchContentDetail(
 ): DataHolder.Content? =
     runCatching {
         getOrFetch(destination) { navDestination ->
-            fetchZhihuContentDetail(navDestination, fetchJson)
+            val (content, rawJson) = fetchZhihuContentDetail(navDestination, fetchJson)
+            rawJson?.let { json ->
+                val (contentType, contentId) = extractContentInfo(navDestination) ?: return@let
+                runCatching { diskCache?.write(contentType, contentId, json.toString()) }
+            }
+            content
         }
     }.getOrElse { error ->
         if (error is CancellationException) throw error

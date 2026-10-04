@@ -81,6 +81,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
+import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
@@ -125,6 +127,13 @@ open class SharedAndroidPaginationEnvironment(
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
+    init {
+        runCatching {
+            ContentDetailCache.diskCache =
+                RoomContentDetailDiskCache(getLocalContentDatabase(context).cachedContentDetailDao())
+        }
+    }
+
     private val localRecommendationEngine by lazy {
         val dao = getLocalContentDatabase(context).contentDao()
         buildLocalRecommendationEngine(dao, context.asApiEnvironment())

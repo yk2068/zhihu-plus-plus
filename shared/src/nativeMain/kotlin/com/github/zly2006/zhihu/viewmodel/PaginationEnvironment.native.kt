@@ -49,6 +49,8 @@ import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getNativeLocalContentDatabase
+import com.github.zly2006.zhihu.data.ContentDetailCache
+import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.request.setBody
 import io.ktor.http.contentType
@@ -100,6 +102,15 @@ internal class NativePaginationEnvironment(
     private val settingsStore = nativeSettingsStore("settings.properties")
     private val historyStorage = NativeHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase()
+
+    init {
+        runCatching {
+            getNativeLocalContentDatabase()?.let { db ->
+                ContentDetailCache.diskCache = RoomContentDetailDiskCache(db.cachedContentDetailDao())
+            }
+        }
+    }
+
     private val localRecommendationEngine by lazy {
         getNativeLocalContentDatabase()?.contentDao()?.let { dao ->
             buildLocalRecommendationEngine(

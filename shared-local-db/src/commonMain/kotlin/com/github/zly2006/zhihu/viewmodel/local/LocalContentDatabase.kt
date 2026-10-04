@@ -23,18 +23,23 @@ import androidx.room.RoomDatabase
 import androidx.room.RoomDatabase.Builder
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import com.github.zly2006.zhihu.data.applyPlatformDriver
 import kotlinx.coroutines.Dispatchers
 
 @Database(
-    entities = [CrawlingTask::class, CrawlingResult::class, LocalFeed::class, UserBehavior::class],
-    version = 5, // 增加版本号，因为添加了UserBehavior表
+    entities = [CrawlingTask::class, CrawlingResult::class, LocalFeed::class, UserBehavior::class, CachedContentDetail::class],
+    version = 6, // v6: 新增 cached_content_details 表，持久化已进入显示列表的内容详情
     exportSchema = false,
 )
 @TypeConverters(LocalDatabaseConverters::class)
 @ConstructedBy(LocalContentDatabaseConstructor::class)
 abstract class LocalContentDatabase : RoomDatabase() {
     abstract fun contentDao(): LocalContentDao
+
+    abstract fun cachedContentDetailDao(): CachedContentDetailDao
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
@@ -42,9 +47,27 @@ expect object LocalContentDatabaseConstructor : RoomDatabaseConstructor<LocalCon
     override fun initialize(): LocalContentDatabase
 }
 
+private val migration5To6 = object : Migration(5, 6) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `cached_content_details` (
+                `id` TEXT NOT NULL PRIMARY KEY,
+                `contentType` TEXT NOT NULL,
+                `contentId` TEXT NOT NULL,
+                `json` TEXT NOT NULL,
+                `updatedAt` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 fun buildLocalContentDatabase(
     builder: Builder<LocalContentDatabase>,
 ): LocalContentDatabase = builder
+    .addMigrations(migration5To6)
+    .fallbackToDestructiveMigration(true)
     .applyPlatformDriver()
     .setQueryCoroutineContext(Dispatchers.Default)
     .build()

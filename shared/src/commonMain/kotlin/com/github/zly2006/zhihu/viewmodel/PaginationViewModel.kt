@@ -301,7 +301,7 @@ suspend fun ZhihuApiEnvironment.fetchContentDetail(destination: NavDestination):
     runCatching {
         fetchZhihuContentDetail(destination) { url, include ->
             fetchJson(url, include)
-        }
+        }.first
     }.getOrElse { error ->
         if (error is CancellationException) throw error
         Log.e("ZhihuApiEnvironment", "Failed to fetch content detail for $destination", error)
