@@ -241,6 +241,8 @@ class FeedDisplayFilterPipeline(
                 .map { item ->
                     async {
                         val identity = item.resolveContentIdentity()
+                        // 详情拉取保持全部并发：一页内多少条 Article/Pin 就同时建多少连接，
+                        // 让网络等待尽量重叠，避免串行化把整页加载拖慢。
                         val rawContent = resolveRawContent(item)
 
                         if (rawContent is DataHolder.DummyContent) {

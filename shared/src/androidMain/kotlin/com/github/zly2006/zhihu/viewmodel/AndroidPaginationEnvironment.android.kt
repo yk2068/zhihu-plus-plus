@@ -35,6 +35,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
+import com.github.zly2006.zhihu.account.accountHttpClientEngineFactory
 import com.github.zly2006.zhihu.account.accountHttpClientEngineForTesting
 import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
@@ -172,7 +173,8 @@ open class SharedAndroidPaginationEnvironment(
                 }
             }
         }
-        return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) } ?: HttpClient(configure)
+        return accountHttpClientEngineForTesting?.let { HttpClient(it, configure) }
+            ?: HttpClient(accountHttpClientEngineFactory, configure)
     }
 
     override fun isAigcVoteEnabled(): Boolean =

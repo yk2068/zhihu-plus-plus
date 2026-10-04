@@ -11,7 +11,6 @@ import com.github.zly2006.zhihu.data.fetchVerifiedZhihuSession
 import com.github.zly2006.zhihu.data.installZhihuCommonClientConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
-import io.ktor.client.engine.HttpClientEngineFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -256,7 +255,7 @@ private fun ZhihuAccountSession.hasSameIdentityAs(other: ZhihuAccountSession): B
     return identity != null && identity == otherIdentity
 }
 
-internal expect val accountHttpClientEngineFactory: HttpClientEngineFactory<*>
+internal expect val accountHttpClientEngineFactory: HttpClientEngine
 
 var accountHttpClientEngineForTesting: HttpClientEngine? = null
 

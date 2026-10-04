@@ -52,8 +52,8 @@ object ContentDetailCache {
 
     private val cache = mutableMapOf<CacheKey, CacheEntry>()
     private val mutex = Mutex()
-    private const val CACHE_EXPIRY_MS = 10 * 60 * 1000L // 10分钟
-    private const val MAX_CACHE_SIZE = 100
+    private const val CACHE_EXPIRY_MS = 15 * 60 * 1000L // 15分钟
+    private const val MAX_CACHE_SIZE = 200
 
     /**
      * 获取内容详情，优先从缓存读取
