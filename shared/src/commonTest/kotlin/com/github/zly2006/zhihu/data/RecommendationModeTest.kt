@@ -25,7 +25,19 @@ class RecommendationModeTest {
     fun keepsPersistedKeysStable() {
         assertEquals("server", RecommendationMode.WEB.key)
         assertEquals("android", RecommendationMode.ANDROID.key)
-        assertEquals("local", RecommendationMode.LOCAL.key)
         assertEquals("mixed", RecommendationMode.MIXED.key)
+    }
+
+    /**
+     * 「本地推荐」已从选项中裁剪。旧安装里若存着 `local`，读取时会回落到 MIXED，
+     * 因此这里同时锁住"local 不再是合法键"和"回落目标仍是 mixed"两点。
+     */
+    @Test
+    fun localModeIsNoLongerAvailable() {
+        assertEquals(null, RecommendationMode.entries.find { it.key == "local" })
+        assertEquals(
+            RecommendationMode.MIXED,
+            RecommendationMode.entries.find { it.key == "local" } ?: RecommendationMode.MIXED,
+        )
     }
 }

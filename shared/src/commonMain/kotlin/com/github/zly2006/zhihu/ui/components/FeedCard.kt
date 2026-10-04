@@ -71,6 +71,7 @@ import coil3.compose.AsyncImage
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
+import com.github.zly2006.zhihu.data.authorDestination
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.officialBadge
 import com.github.zly2006.zhihu.data.sourceLabel
@@ -306,6 +307,11 @@ private fun FeedCardContent(
     val fontSizePercent = remember { settings.getInt(PREF_FONT_SIZE, 100) }
     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
+    // 作者区域单独可点：进作者主页而不是打开这条内容。拿不到作者时保持不可点击，
+    // 让整张卡片继续响应原有的进入内容行为。
+    val openAuthor: (() -> Unit)? = item.authorDestination?.let { destination ->
+        { navigator.onNavigate(destination) }
+    }
     val visiblePinImages = pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
     val sourceLabel = item.feed?.sourceLabel.takeUnless { item.isFiltered }
     if (duo3CardLayout) {
@@ -382,7 +388,13 @@ private fun FeedCardContent(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .weight(1f, fill = false)
-                                    .clickable {},
+                                    .then(
+                                        if (openAuthor != null) {
+                                            Modifier.clickable(onClick = openAuthor)
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
                             ) {
                                 AsyncImage(
                                     model = avatarSrc,
@@ -447,7 +459,13 @@ private fun FeedCardContent(
             Spacer(Modifier.height(4.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable {},
+                modifier = Modifier.then(
+                    if (openAuthor != null) {
+                        Modifier.clickable(onClick = openAuthor)
+                    } else {
+                        Modifier
+                    },
+                ),
             ) {
                 AsyncImage(
                     model = avatarSrc,

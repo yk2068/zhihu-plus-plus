@@ -189,10 +189,6 @@ class HomeFeedStartupSnapshotTest {
             homeFeedStartupCacheFileName(RecommendationMode.ANDROID),
         )
         assertEquals(
-            "home_feed_startup_cache_local.json",
-            homeFeedStartupCacheFileName(RecommendationMode.LOCAL),
-        )
-        assertEquals(
             "home_feed_startup_cache_mixed.json",
             homeFeedStartupCacheFileName(RecommendationMode.MIXED),
         )

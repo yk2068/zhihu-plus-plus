@@ -23,6 +23,7 @@ import com.github.zly2006.zhihu.account.ZhihuAccountSession
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
 import com.github.zly2006.zhihu.navigation.NavDestination
+import com.github.zly2006.zhihu.navigation.Person
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.jsonObject
@@ -129,6 +130,24 @@ val FeedDisplayItem.navDestination: NavDestination?
     get() = navDestinationJson
         ?.let { runCatching { feedNavigationJson.decodeFromString<NavDestination>(it) }.getOrNull() }
         ?: feed?.target?.navDestination
+
+/**
+ * 该条目作者的个人主页，供列表里点作者区域跳转使用。
+ *
+ * [Feed.Person] 与导航用的 [Person] 是两个类型：前者是接口模型，后者是路由目标，
+ * 这里做一次映射。`urlToken` 可能缺失（如部分接口只返回 id），此时退回用 id，
+ * 与 [Person] 自身 `userTokenOrId` 的取法一致。
+ *
+ * 本地推荐生成的条目没有 feed，拿不到作者，返回 null；调用方应把作者区域当作不可点击。
+ */
+val FeedDisplayItem.authorDestination: NavDestination?
+    get() = feed?.target?.author?.let { author ->
+        Person(
+            id = author.id,
+            urlToken = author.urlToken?.takeIf { it.isNotBlank() } ?: author.id,
+            name = author.name,
+        )
+    }
 
 fun NavDestination.toFeedDisplayItemNavDestinationJson(): String = feedNavigationJson.encodeToString<NavDestination>(this)
 

@@ -152,7 +152,6 @@ import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedViewModel
-import com.github.zly2006.zhihu.viewmodel.local.LocalHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.rememberPaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
@@ -271,10 +270,8 @@ fun HomeScreen(
     val viewModel: BaseFeedViewModel = when (currentRecommendationMode) {
         RecommendationMode.WEB -> viewModel { HomeFeedViewModel() }
         RecommendationMode.ANDROID -> viewModel { AndroidHomeFeedViewModel() }
-        RecommendationMode.LOCAL -> viewModel { LocalHomeFeedViewModel() }
         RecommendationMode.MIXED -> viewModel { MixedHomeFeedViewModel() }
     }
-    val localHomeViewModel = viewModel as? LocalHomeFeedViewModel
     val readingQueueSourceId = "home:${currentRecommendationMode.name}"
     RegisterReadingQueueSource(
         sourceId = readingQueueSourceId,
@@ -864,8 +861,6 @@ fun HomeScreen(
 //                            DataHolder.putFeed(feed)
                             (viewModel as? HomeFeedInteractionViewModel)
                                 ?.onUiContentClick(paginationEnvironment, feed, clickedItem)
-                        } else {
-                            localHomeViewModel?.onLocalItemOpened(clickedItem)
                         }
                         if (destination != null) {
                             navigator.onNavigate(destination)
