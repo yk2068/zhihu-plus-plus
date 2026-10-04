@@ -1,5 +1,18 @@
 # Zhihu++：注重隐私、互联网个人权利和无广告的知乎客户端
 
+> [!IMPORTANT]
+> **本仓库是 [zly2006/zhihu-plus-plus](https://github.com/zly2006/zhihu-plus-plus) 的 Fork，并非官方仓库。**
+>
+> - 上游项目：[zly2006/zhihu-plus-plus](https://github.com/zly2006/zhihu-plus-plus)　作者：zly2006
+> - 本 Fork 所有者：[yk2068](https://github.com/yk2068)
+> - 许可：沿用上游的 **AGPL-3.0**（见 [LICENSE](LICENSE)）
+>
+> **本 Fork 为 AI 辅助定制版本**：改动由 AI（Claude/WorkBuddy）辅助生成与维护，非上游作者官方发布。
+> 定制内容不代表上游立场，问题与 bug 请优先在本仓库反馈；如需跟随上游进展，可关注上游仓库。
+>
+> 定制要点：搜索默认按赞同数排序并隐藏被质量过滤的内容；提高 feed 详情拉取的 HTTP 并发以加快加载；
+> 已加载内容详情持久化到本地磁盘缓存（下次打开优先读缓存）；搜索历史支持单条删除。
+
 [![GitHub release](https://img.shields.io/github/v/release/zly2006/zhihu-plus-plus)](https://github.com/zly2006/zhihu-plus-plus/releases)
 
 本项目还不够完善，欢迎PR。
