@@ -213,8 +213,11 @@ open class SearchViewModel(
             val entity = when (pending) {
                 is PendingGeneralEntity.Person -> SearchEntity.Person(pending.person)
                 is PendingGeneralEntity.Content -> createDisplayItem(environment, pending.feed)
-                    .stableKey
-                    .let(loadedContent::get)
+                    // 被质量过滤命中的内容（低于最低赞数 / 屏蔽的想法视频等）直接不进入搜索结果，
+                    // 与全局 qualityFilterMode 无关，保证搜索页「被过滤的不要显示」。
+                    .takeIf { !it.isQualityFiltered }
+                    ?.stableKey
+                    ?.let(loadedContent::get)
                     ?.let { SearchEntity.Content(it) }
             }
             if (entity != null && existingIds.add(entity.id)) entities += entity
@@ -308,7 +311,7 @@ private data class TopicSearchObject(
 )
 
 data class SearchFilters(
-    val sort: SearchSortOption = SearchSortOption.Default,
+    val sort: SearchSortOption = SearchSortOption.MostVoted,
     val contentType: SearchContentType = SearchContentType.All,
     val timeRange: SearchTimeRange = SearchTimeRange.All,
 )
