@@ -17,7 +17,9 @@
 
 package com.github.zly2006.zhihu.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -162,7 +164,7 @@ private fun saveSearchHistory(
  * 页面由搜索输入框、热搜/历史建议和结果列表组成。空查询时是否显示热搜、是否记录并展示搜索历史分别由
  * `showSearchHotSearch` 和 `showSearchHistory` 控制；执行搜索后会进入分页结果模式，并通过 [LocalNavigator] 打开条目详情。
  */
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalCoroutinesApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun SearchScreen(
     search: Search,
@@ -233,6 +235,16 @@ fun SearchScreen(
             saveSearchHistory(settings, searchHistoryItems)
         }
         navigator.onNavigate(search.copy(query = trimmedQuery))
+    }
+
+    /**
+     * 删除单条搜索历史并立即持久化。
+     * 供历史条目上的删除按钮与长按操作复用。
+     */
+    fun removeSearchHistoryItem(query: String) {
+        if (searchHistoryItems.remove(query)) {
+            saveSearchHistory(settings, searchHistoryItems)
+        }
     }
 
     suspend fun fetchHotSearch() {
@@ -526,10 +538,15 @@ fun SearchScreen(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            keyboardController?.hide()
-                                            submitSearch(query)
-                                        }.padding(vertical = 10.dp),
+                                        .combinedClickable(
+                                            onClick = {
+                                                keyboardController?.hide()
+                                                submitSearch(query)
+                                            },
+                                            onLongClick = {
+                                                removeSearchHistoryItem(query)
+                                            },
+                                        ).padding(vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Icon(
@@ -547,6 +564,19 @@ fun SearchScreen(
                                             .weight(1f)
                                             .padding(end = 8.dp),
                                     )
+                                    IconButton(
+                                        onClick = { removeSearchHistoryItem(query) },
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .testTag("search_history_delete_$query"),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Clear,
+                                            contentDescription = "删除该条搜索历史",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                             if (shouldShowHotSearch) {
