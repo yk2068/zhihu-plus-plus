@@ -59,6 +59,8 @@ import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
+import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
+import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY_LIMIT
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
@@ -171,6 +173,24 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.showRefreshFab", "显示刷新 FAB 按钮", "控制首页和列表的浮动刷新按钮。", "showRefreshFab", listOf("刷新按钮", "浮动按钮")))
     add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式", "卡片样式", "分割线")))
     add(appearanceEntry("appearance.segmentHighlightEnabled", "显示划线段评", "控制正文里段评句子的虚线下划线和点击。", PREF_SEGMENT_HIGHLIGHT_ENABLED, listOf("划线", "下划线", "虚线", "段评")))
+    add(
+        appearanceEntry(
+            "appearance.readingPositionMemory",
+            "记忆阅读位置",
+            "控制重新打开文章或回答时是否回到上次读到的位置。",
+            PREF_READING_POSITION_MEMORY,
+            listOf("阅读位置", "阅读进度", "上次读到", "回到原处", "断点", "记忆"),
+        ),
+    )
+    add(
+        appearanceEntry(
+            "appearance.readingPositionMemoryLimit",
+            "记忆条数",
+            "设置最多记住多少篇内容的阅读位置，超出后淘汰最久没读的一篇。",
+            PREF_READING_POSITION_MEMORY_LIMIT,
+            listOf("阅读位置", "阅读进度", "记忆条数", "条数", "记忆"),
+        ),
+    )
     add(appearanceEntry("appearance.webviewRender", "使用 WebView 显示文章", "切换文章、回答、想法正文渲染方式。", ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
     add(appearanceEntry("appearance.titleAutoHide", "自动隐藏回答标题", "阅读时自动收起顶部标题。", "titleAutoHide", listOf("标题栏")))
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))

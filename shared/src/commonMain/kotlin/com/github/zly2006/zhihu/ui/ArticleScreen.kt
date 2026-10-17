@@ -117,6 +117,10 @@ import com.github.zly2006.zhihu.platform.isArticleHtmlExportSupported
 import com.github.zly2006.zhihu.platform.isArticleImageExportSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
+import com.github.zly2006.zhihu.reading.DEFAULT_READING_POSITION_MEMORY
+import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
+import com.github.zly2006.zhihu.reading.ReadingPositionMemory
+import com.github.zly2006.zhihu.reading.readingPositionKey
 import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.article.AigcFlagSheet
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
@@ -170,6 +174,13 @@ import kotlin.math.max
 
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
+
+/** 恢复阅读位置最多等待正文完成布局的时间；超时后按当前可达高度落点。 */
+private const val READING_POSITION_RESTORE_TIMEOUT_MS = 3_000L
+private const val READING_POSITION_RESTORE_POLL_MS = 50L
+
+/** 停止滚动后多久写入阅读位置，避免每一帧都落盘。 */
+private const val READING_POSITION_SAVE_DEBOUNCE_MS = 400L
 
 /**
  * 文章/回答详情页。
@@ -232,6 +243,9 @@ fun ArticleScreen(
     }
     val pageTurnSwitchAnswer by rememberObservedSetting(settings, PREF_PAGE_TURN_SWITCH_ANSWER) {
         getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER)
+    }
+    val readingPositionEnabled by rememberObservedSetting(settings, PREF_READING_POSITION_MEMORY) {
+        getBoolean(PREF_READING_POSITION_MEMORY, DEFAULT_READING_POSITION_MEMORY)
     }
 
     fun saveAnswerDoubleTapAction(action: AnswerDoubleTapAction) {
@@ -390,6 +404,61 @@ fun ArticleScreen(
             }
             if (currentScroll == viewModel.rememberedScrollY && scrollState.maxValue != Int.MAX_VALUE) {
                 viewModel.rememberedScrollYSync = true
+            }
+        }
+    }
+
+    // ── 记忆阅读位置 ────────────────────────────────────────────────────────────
+    // 只作用于本页（文章/回答）。位置按内容 id 存盘，重新进入同一内容时恢复；条数由设置页控制，
+    // 超出后按最近阅读淘汰。恢复完成前不写盘，避免初始的 0 覆盖掉真正记住的位置。
+    val readingPositionMemory = remember(settings) { ReadingPositionMemory(settings) }
+    val currentReadingPositionKey = readingPositionKey(article.type, article.id)
+    var readingPositionRestoreDone by remember(currentReadingPositionKey) { mutableStateOf(false) }
+
+    LaunchedEffect(currentReadingPositionKey, readingPositionEnabled) {
+        val target = if (readingPositionEnabled) {
+            readingPositionMemory.savedPosition(currentReadingPositionKey)
+        } else {
+            null
+        }
+        if (target != null && target > 0) {
+            // 正文异步渲染，滚动范围在内容布局完成前不可用；等到覆盖目标位置再滚动。
+            // 等待期间用户一旦自己滚动就放弃恢复，避免把正在读的页面拽走。
+            var waitedMs = 0L
+            while (waitedMs < READING_POSITION_RESTORE_TIMEOUT_MS && scrollState.value == 0) {
+                val maxValue = scrollState.maxValue
+                if (maxValue != Int.MAX_VALUE && maxValue >= target) break
+                delay(READING_POSITION_RESTORE_POLL_MS)
+                waitedMs += READING_POSITION_RESTORE_POLL_MS
+            }
+            val maxValue = scrollState.maxValue
+            if (scrollState.value == 0 && maxValue != Int.MAX_VALUE) {
+                scrollState.scrollTo(target.coerceAtMost(maxValue))
+            }
+        }
+        readingPositionRestoreDone = true
+    }
+
+    LaunchedEffect(currentReadingPositionKey, readingPositionEnabled) {
+        if (!readingPositionEnabled) return@LaunchedEffect
+        snapshotFlow { scrollState.value }.collectLatest { position ->
+            if (position > 0) {
+                delay(READING_POSITION_SAVE_DEBOUNCE_MS)
+                readingPositionMemory.remember(currentReadingPositionKey, position)
+            }
+        }
+    }
+
+    DisposableEffect(currentReadingPositionKey, readingPositionEnabled) {
+        onDispose {
+            if (readingPositionEnabled && readingPositionRestoreDone) {
+                val lastPosition = scrollState.value
+                if (lastPosition > 0) {
+                    readingPositionMemory.remember(currentReadingPositionKey, lastPosition)
+                } else {
+                    // 用户主动读回顶部后离开：清掉旧位置，下次不要跳到中间。
+                    readingPositionMemory.forget(currentReadingPositionKey)
+                }
             }
         }
     }
