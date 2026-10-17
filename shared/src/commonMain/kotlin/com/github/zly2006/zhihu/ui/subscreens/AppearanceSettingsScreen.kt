@@ -791,20 +791,6 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor("showRefreshFab"),
                 )
 
-                val homeRefreshFab = remember { mutableStateOf(settings.getBoolean("homeRefreshFab", true)) }
-                SettingItemWithSwitch(
-                    title = { Text("主页刷新按钮") },
-                    description = { Text("单独控制主页右下角的刷新按钮，其他页面仍按上面的总开关显示。") },
-                    checked = homeRefreshFab.value,
-                    onCheckedChange = {
-                        homeRefreshFab.value = it
-                        settings.putBoolean("homeRefreshFab", it)
-                    },
-                    settingKey = "homeRefreshFab",
-                    highlightedKey = settingKey,
-                    bringIntoViewRequester = requesterFor("homeRefreshFab"),
-                )
-
                 val homeCreateFab = remember { mutableStateOf(settings.getBoolean("homeCreateFab", true)) }
                 SettingItemWithSwitch(
                     title = { Text("主页发布按钮") },

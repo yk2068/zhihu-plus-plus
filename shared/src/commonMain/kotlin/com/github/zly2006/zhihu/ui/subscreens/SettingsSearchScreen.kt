@@ -172,15 +172,6 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.showRefreshFab", "显示刷新 FAB 按钮", "控制首页和列表的浮动刷新按钮。", "showRefreshFab", listOf("刷新按钮", "浮动按钮")))
     add(
         appearanceEntry(
-            "appearance.homeRefreshFab",
-            "主页刷新按钮",
-            "单独控制主页右下角的刷新按钮，其他页面仍按总开关显示。",
-            "homeRefreshFab",
-            listOf("主页刷新", "刷新按钮", "隐藏刷新"),
-        ),
-    )
-    add(
-        appearanceEntry(
             "appearance.homeCreateFab",
             "主页发布按钮",
             "控制主页右下角的 ＋ 按钮，点击展开提问题、写回答、发想法。",

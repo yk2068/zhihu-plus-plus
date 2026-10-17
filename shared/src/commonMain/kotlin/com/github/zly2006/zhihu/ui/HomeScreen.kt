@@ -218,8 +218,8 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-    // 刷新按钮：总开关控制首页与各列表页；主页另有单独开关，两者都打开才显示。
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true) && settings.getBoolean("homeRefreshFab", true)
+    // 刷新按钮复用已有的全局开关（原来就有，覆盖主页与各列表页）。
+    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
     // 发布（创作）按钮，只出现在主页右下角。
     val showCreateFab = settings.getBoolean("homeCreateFab", true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
