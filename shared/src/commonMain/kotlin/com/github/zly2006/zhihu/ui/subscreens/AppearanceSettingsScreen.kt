@@ -780,7 +780,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItemWithSwitch(
                     title = { Text("显示刷新悬浮按钮") },
-                    description = { Text("在页面上显示可拖动的刷新按钮。") },
+                    description = { Text("在主页和各列表页显示可拖动的刷新按钮。") },
                     checked = showRefreshFab.value,
                     onCheckedChange = {
                         showRefreshFab.value = it
@@ -789,6 +789,34 @@ fun AppearanceSettingsScreen(
                     settingKey = "showRefreshFab",
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("showRefreshFab"),
+                )
+
+                val homeRefreshFab = remember { mutableStateOf(settings.getBoolean("homeRefreshFab", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("主页刷新按钮") },
+                    description = { Text("单独控制主页右下角的刷新按钮，其他页面仍按上面的总开关显示。") },
+                    checked = homeRefreshFab.value,
+                    onCheckedChange = {
+                        homeRefreshFab.value = it
+                        settings.putBoolean("homeRefreshFab", it)
+                    },
+                    settingKey = "homeRefreshFab",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("homeRefreshFab"),
+                )
+
+                val homeCreateFab = remember { mutableStateOf(settings.getBoolean("homeCreateFab", true)) }
+                SettingItemWithSwitch(
+                    title = { Text("主页发布按钮") },
+                    description = { Text("主页右下角的 ＋ 按钮，点击展开提问题、写回答、发想法。") },
+                    checked = homeCreateFab.value,
+                    onCheckedChange = {
+                        homeCreateFab.value = it
+                        settings.putBoolean("homeCreateFab", it)
+                    },
+                    settingKey = "homeCreateFab",
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor("homeCreateFab"),
                 )
 
                 var feedCardStyleExpanded by remember { mutableStateOf(false) }

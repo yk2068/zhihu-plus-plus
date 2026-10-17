@@ -122,7 +122,6 @@ import com.github.zly2006.zhihu.notification.OnlineHomeNotification
 import com.github.zly2006.zhihu.notification.OnlineHomeNotificationRepository
 import com.github.zly2006.zhihu.notification.rememberNotificationSettingsStore
 import com.github.zly2006.zhihu.platform.UserMessageDuration
-import com.github.zly2006.zhihu.platform.rememberAppPrivateDirectory
 import com.github.zly2006.zhihu.platform.rememberExternalUrlOpener
 import com.github.zly2006.zhihu.platform.rememberIsLiteVariant
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
@@ -157,11 +156,8 @@ import com.github.zly2006.zhihu.viewmodel.za.AndroidHomeFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.za.MixedHomeFeedViewModel
 import io.ktor.client.request.get
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
-import kotlinx.io.files.Path
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -215,7 +211,6 @@ fun HomeScreen(
     val navigator = LocalNavigator.current
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = true)
     val settings = rememberSettingsStore()
-    val appPrivateDirectory = rememberAppPrivateDirectory()
     val notificationSettings = rememberNotificationSettingsStore()
     val userMessages = rememberUserMessageSink()
     val openExternalUrl = rememberExternalUrlOpener()
@@ -223,7 +218,10 @@ fun HomeScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
-    val showRefreshFab = settings.getBoolean("showRefreshFab", true)
+    // 刷新按钮：总开关控制首页与各列表页；主页另有单独开关，两者都打开才显示。
+    val showRefreshFab = settings.getBoolean("showRefreshFab", true) && settings.getBoolean("homeRefreshFab", true)
+    // 发布（创作）按钮，只出现在主页右下角。
+    val showCreateFab = settings.getBoolean("homeCreateFab", true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -238,9 +236,6 @@ fun HomeScreen(
         RecommendationMode.entries.find {
             it.key == settings.getString("recommendationMode", RecommendationMode.MIXED.key)
         } ?: RecommendationMode.MIXED
-    val startupCacheFile = remember(appPrivateDirectory, currentRecommendationMode) {
-        Path(appPrivateDirectory, homeFeedStartupCacheFileName(currentRecommendationMode))
-    }
 
     val account = rememberAccountSettingsAccountState().value
     if (account.login && !account.hasRequiredCookie) {
@@ -304,15 +299,6 @@ fun HomeScreen(
         }
     }
 
-    val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
-    LaunchedEffect(latestLoadedDisplayItems) {
-        if (latestLoadedDisplayItems.isNotEmpty()) {
-            withContext(Dispatchers.Default) {
-                writeHomeFeedStartupSnapshot(startupCacheFile, latestLoadedDisplayItems)
-            }
-        }
-    }
-
     val completedPageCount = viewModel.completedPageCount
     LaunchedEffect(completedPageCount) {
         if (completedPageCount > 0 &&
@@ -327,10 +313,8 @@ fun HomeScreen(
 
     // 预取缓冲：滑到底部后若「未过滤条目」相对已消费量不足 5 条，就继续翻页补足。
     // 依赖 consumedUnfilteredCount 与 completedPageCount 一起触发，避免预取完成后不再复查。
-    //
-    // hasFeedContent 这个前置判断很关键：列表还空的时候 shouldPrefetchMore 恒为 true，
-    // 而这个 effect 声明在启动加载之前，会先于「启动时自动刷新首页」的判断跑起来，
-    // 于是即便关掉了开关、也还有启动快照，冷启动照样立刻发一次网络请求 —— 表现为开关失效。
+    // 列表为空时 shouldPrefetchMore 恒为 true，而这里先于启动加载执行，所以要先挡住，
+    // 否则冷启动会先发一次 loadMore，和启动时的刷新请求叠在一起。
     val hasFeedContent = viewModel.displayItems.isNotEmpty()
     LaunchedEffect(completedPageCount, viewModel.consumedUnfilteredCount, hasFeedContent) {
         if (!hasFeedContent) return@LaunchedEffect
@@ -341,35 +325,15 @@ fun HomeScreen(
         }
     }
 
-    // 初始加载：先用上次的启动快照把界面填上；「启动时自动刷新首页」关闭时到此为止，不联网。
-    // 只有连快照都没有（首次安装、清过缓存、刚换推荐算法）才联网兜底，否则首页会一片空白。
+    // 初始加载：冷启动直接联网拉一页推荐。之前这里有「启动快照缓存 + 启动时自动刷新」两套逻辑，
+    // 快照序列化反复出问题、行为也不可控，整体删掉了。
     LaunchedEffect(currentRecommendationMode, account.login) {
         if (!account.login && settings.getBoolean("loginForRecommendation", true)) {
             requestLoginNavigation()
             return@LaunchedEffect
         }
         if (viewModel.displayItems.isNotEmpty()) return@LaunchedEffect
-
-        val cachedItems = withContext(Dispatchers.Default) {
-            readHomeFeedStartupSnapshot(startupCacheFile)
-        }
-        // HIDE 模式下快照里可能残留上次判定为「已屏蔽」的条目，这里同样要丢弃。
-        viewModel.addDisplayItems(
-            cachedItems,
-            dropQualityFiltered = settings.getString(
-                QUALITY_FILTER_MODE_PREFERENCE_KEY,
-                QualityFilterMode.RULES.name,
-            ) == QualityFilterMode.HIDE.name,
-        )
-
-        // 开关按执行时刻的取值判断，不用组合期的快照值，避免「刚改完设置就重启」读到旧值。
-        val refreshOnStartup = shouldRefreshHomeFeedOnStartup(
-            autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true),
-            hasSnapshot = viewModel.displayItems.isNotEmpty(),
-        )
-        if (refreshOnStartup) {
-            viewModel.refresh(paginationEnvironment)
-        }
+        viewModel.refresh(paginationEnvironment)
     }
 
     LaunchedEffect(lifecycleOwner, scrollToTopTrigger) {
@@ -981,22 +945,24 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }
-            val createFabOpacity = remember(settings) {
-                settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
-            }
-            FloatingActionButton(
-                modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
-                onClick = { showCreateMenu = !showCreateMenu },
-                shape = CircleShape,
-                containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
-                elevation = if (createFabOpacity < 1f) {
-                    FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
-                } else {
-                    FloatingActionButtonDefaults.elevation()
-                },
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "创作")
+            if (showCreateFab) {
+                val createFabOpacity = remember(settings) {
+                    settings.getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY).coerceIn(10, 100) / 100f
+                }
+                FloatingActionButton(
+                    modifier = Modifier.testTag(HOME_CREATE_FAB_TAG),
+                    onClick = { showCreateMenu = !showCreateMenu },
+                    shape = CircleShape,
+                    containerColor = FloatingActionButtonDefaults.containerColor.copy(alpha = createFabOpacity),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = createFabOpacity),
+                    elevation = if (createFabOpacity < 1f) {
+                        FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
+                    } else {
+                        FloatingActionButtonDefaults.elevation()
+                    },
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "创作")
+                }
             }
         }
     }

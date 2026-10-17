@@ -61,7 +61,6 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -171,6 +170,24 @@ private val settingsSearchEntries = buildList {
     add(appearanceEntry("appearance.fontScale", "字号与行高", "调整正文阅读字号和行距。", "fontScale", listOf("字体大小", "内容字体", "正文字号", "行距")))
     add(appearanceEntry("appearance.showFeedThumbnail", "显示 Feed 卡片缩略图", "控制信息流卡片图片显示。", "showFeedThumbnail", listOf("图片", "封面")))
     add(appearanceEntry("appearance.showRefreshFab", "显示刷新 FAB 按钮", "控制首页和列表的浮动刷新按钮。", "showRefreshFab", listOf("刷新按钮", "浮动按钮")))
+    add(
+        appearanceEntry(
+            "appearance.homeRefreshFab",
+            "主页刷新按钮",
+            "单独控制主页右下角的刷新按钮，其他页面仍按总开关显示。",
+            "homeRefreshFab",
+            listOf("主页刷新", "刷新按钮", "隐藏刷新"),
+        ),
+    )
+    add(
+        appearanceEntry(
+            "appearance.homeCreateFab",
+            "主页发布按钮",
+            "控制主页右下角的 ＋ 按钮，点击展开提问题、写回答、发想法。",
+            "homeCreateFab",
+            listOf("发布按钮", "创作按钮", "加号", "写回答", "提问题"),
+        ),
+    )
     add(appearanceEntry("appearance.feedCardStyle", "信息流样式", "切换卡片或分割线样式。", "feedCardStyle", listOf("Feed", "列表样式", "卡片样式", "分割线")))
     add(appearanceEntry("appearance.segmentHighlightEnabled", "显示划线段评", "控制正文里段评句子的虚线下划线和点击。", PREF_SEGMENT_HIGHLIGHT_ENABLED, listOf("划线", "下划线", "虚线", "段评")))
     add(
@@ -251,15 +268,6 @@ private val settingsSearchEntries = buildList {
 
     add(recommendEntry("recommend.recommendationMode", "推荐算法", "选择 Web、Android、本地或混合推荐。", "recommendationMode", listOf("推荐来源", "Web 推荐", "Android 推荐", "本地推荐", "混合推荐")))
     add(recommendEntry("recommend.loginForRecommendation", "推荐内容时登录", "获取推荐内容时是否带登录凭证。", "loginForRecommendation"))
-    add(
-        recommendEntry(
-            "recommend.autoRefreshHomeOnStartup",
-            "启动时自动刷新首页",
-            "关闭后启动时只显示上次的推荐内容，不自动联网刷新。",
-            AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY,
-            listOf("启动刷新", "自动刷新", "首页缓存", "省流", "刷新首页"),
-        ),
-    )
     add(recommendEntry("recommend.qualityFilterMode", "质量屏蔽", "选择不屏蔽、显示屏蔽规则或直接隐藏低质量内容。", QUALITY_FILTER_MODE_PREFERENCE_KEY, listOf("低质量", "屏蔽规则", "隐藏")))
     add(recommendEntry("recommend.enableContentFilter", "启用智能内容过滤", "过滤重复出现但未点击内容。", "enableContentFilter"))
     add(recommendEntry("recommend.filterFollowedUserContent", "过滤已关注用户内容", "控制是否过滤已关注用户的内容。", "filterFollowedUserContent"))
