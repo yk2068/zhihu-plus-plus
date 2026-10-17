@@ -216,7 +216,7 @@ fun ContentFilterSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:loginForRecommendation"),
                     title = { Text("推荐内容时登录") },
-                    description = { Text("获取推荐内容时携带登录凭证") },
+                    description = { Text("获取推荐内容时携带登录凭证。") },
                     checked = isLoginForRecommendation.value,
                     onCheckedChange = { checked ->
                         isLoginForRecommendation.value = checked
@@ -232,7 +232,7 @@ fun ContentFilterSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:autoRefreshHomeOnStartup"),
                     title = { Text("启动时自动刷新首页") },
-                    description = { Text("关闭后优先显示上次获取的一批首页推荐；没有缓存时仍会加载新推荐") },
+                    description = { Text("关闭后启动时只显示上次的推荐内容，不自动联网刷新；没有缓存时仍会加载一次。") },
                     checked = autoRefreshHomeOnStartup.value,
                     onCheckedChange = { checked ->
                         autoRefreshHomeOnStartup.value = checked
@@ -260,7 +260,7 @@ fun ContentFilterSettingsScreen(
                 )
                 SettingItem(
                     title = { Text("质量屏蔽") },
-                    description = { Text("根据赞同数、关注数等指标处理低质量内容") },
+                    description = { Text("根据赞同数、关注数等指标过滤低质量内容。") },
                     settingKey = QUALITY_FILTER_MODE_PREFERENCE_KEY,
                     highlightedKey = highlightedSetting,
                     endAction = {
@@ -310,7 +310,7 @@ fun ContentFilterSettingsScreen(
                 SettingItem(
                     modifier = Modifier.testTag("contentFilterSettings:minLikeThreshold"),
                     title = { Text("最低赞数") },
-                    description = { Text("回答、文章、视频和想法统一适用；低于此数值且作者未被关注的会被过滤。0 表示不限制") },
+                    description = { Text("回答、文章、视频和想法统一适用；低于此数值且作者未被关注的会被过滤。0 表示不限制。") },
                     settingKey = MIN_LIKE_THRESHOLD_PREFERENCE_KEY,
                     highlightedKey = highlightedSetting,
                     endAction = { Text(thresholdValues[MIN_LIKE_THRESHOLD_PREFERENCE_KEY].toString(), modifier = Modifier.padding(horizontal = 16.dp)) },
@@ -326,7 +326,7 @@ fun ContentFilterSettingsScreen(
                 }
                 SettingItem(
                     title = { Text("问题质量过滤阈值") },
-                    description = { Text("问题没有赞数，单独按回答数和关注数判断") },
+                    description = { Text("问题没有赞数，单独按回答数和关注数判断。") },
                     endAction = { Text(if (advancedThresholdsExpanded) "收起" else "展开", modifier = Modifier.padding(horizontal = 16.dp)) },
                     onClick = { advancedThresholdsExpanded = !advancedThresholdsExpanded },
                 )
@@ -376,7 +376,7 @@ fun ContentFilterSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:enableContentFilter"),
                     title = { Text("启用智能内容过滤") },
-                    description = { Text("自动过滤首页展示超过2次但用户未点击的内容，减少重复推荐") },
+                    description = { Text("自动过滤首页出现超过 2 次但始终没被点击的内容，减少重复推荐。") },
                     checked = enableContentFilter.value,
                     onCheckedChange = {
                         enableContentFilter.value = it
@@ -390,7 +390,7 @@ fun ContentFilterSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:filterFollowedUserContent"),
                     title = { Text("过滤已关注用户内容") },
-                    description = { Text("是否对已关注用户的内容也应用过滤规则。关闭此选项可确保关注用户的内容始终显示") },
+                    description = { Text("是否对已关注用户的内容也应用过滤规则；关闭后关注的人发布的内容始终显示。") },
                     checked = filterFollowedUserContent.value,
                     onCheckedChange = {
                         filterFollowedUserContent.value = it
@@ -406,7 +406,7 @@ fun ContentFilterSettingsScreen(
                 val enableKeywordBlocking = remember { mutableStateOf(settings.getBoolean("enableKeywordBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用关键词屏蔽") },
-                    description = { Text("屏蔽包含特定关键词的内容") },
+                    description = { Text("屏蔽标题或正文包含指定关键词的内容。") },
                     checked = enableKeywordBlocking.value,
                     onCheckedChange = {
                         enableKeywordBlocking.value = it
@@ -419,7 +419,7 @@ fun ContentFilterSettingsScreen(
                 val enableUserBlocking = remember { mutableStateOf(settings.getBoolean("enableUserBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用用户屏蔽") },
-                    description = { Text("屏蔽特定用户发布的内容，或由特定用户提出的问题") },
+                    description = { Text("屏蔽指定用户发布的内容，以及该用户提出的问题。") },
                     checked = enableUserBlocking.value,
                     onCheckedChange = {
                         enableUserBlocking.value = it
@@ -432,7 +432,7 @@ fun ContentFilterSettingsScreen(
                 val enableTopicBlocking = remember { mutableStateOf(settings.getBoolean("enableTopicBlocking", true)) }
                 SettingItemWithSwitch(
                     title = { Text("启用主题屏蔽") },
-                    description = { Text("屏蔽包含特定主题的内容") },
+                    description = { Text("屏蔽带有指定主题的内容。") },
                     checked = enableTopicBlocking.value,
                     onCheckedChange = {
                         enableTopicBlocking.value = it
@@ -450,7 +450,7 @@ fun ContentFilterSettingsScreen(
                         title = { Text("主题屏蔽阈值") },
                         description = {
                             Text(
-                                "当回答的问题包含 >= ${topicThreshold.value} 个被屏蔽主题时，屏蔽该内容",
+                                "回答所涉及的问题命中 ${topicThreshold.value} 个及以上被屏蔽主题时，屏蔽该内容。",
                             )
                         },
                         settingKey = "topicBlockingThreshold",
@@ -473,7 +473,7 @@ fun ContentFilterSettingsScreen(
                             title = { Text("设置主题屏蔽阈值") },
                             text = {
                                 Column {
-                                    Text("当内容包含的被屏蔽主题数量达到或超过此阈值时，该内容将被屏蔽。")
+                                    Text("回答所涉及的问题命中该数量的被屏蔽主题时，内容即被屏蔽。")
                                     Spacer(modifier = Modifier.height(16.dp))
                                     OutlinedTextField(
                                         value = inputValue,
@@ -513,7 +513,7 @@ fun ContentFilterSettingsScreen(
                 val blockZhihuAdPlatform = remember { mutableStateOf(settings.getBoolean("blockZhihuAdPlatform", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎广告平台内容") },
-                    description = { Text("匹配并屏蔽包含 xg.zhihu.com 的推广内容") },
+                    description = { Text("匹配并屏蔽包含 xg.zhihu.com 的推广内容。") },
                     checked = blockZhihuAdPlatform.value,
                     onCheckedChange = {
                         blockZhihuAdPlatform.value = it
@@ -526,7 +526,7 @@ fun ContentFilterSettingsScreen(
                 val blockZhihuSchool = remember { mutableStateOf(settings.getBoolean("blockZhihuSchool", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎学堂内容") },
-                    description = { Text("匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容") },
+                    description = { Text("匹配并屏蔽包含 d.zhihu.com 或 data-edu-card-id 的内容。") },
                     checked = blockZhihuSchool.value,
                     onCheckedChange = {
                         blockZhihuSchool.value = it
@@ -539,7 +539,7 @@ fun ContentFilterSettingsScreen(
                 val blockWeChatOfficialAccount = remember { mutableStateOf(settings.getBoolean("blockWeChatOfficialAccount", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽微信公众号文章") },
-                    description = { Text("匹配并屏蔽包含 mp.weixin.qq.com 的外链文章") },
+                    description = { Text("匹配并屏蔽包含 mp.weixin.qq.com 的外链文章。") },
                     checked = blockWeChatOfficialAccount.value,
                     onCheckedChange = {
                         blockWeChatOfficialAccount.value = it
@@ -552,7 +552,7 @@ fun ContentFilterSettingsScreen(
                 val blockPaidContent = remember { mutableStateOf(settings.getBoolean("blockPaidContent", true)) }
                 SettingItemWithSwitch(
                     title = { Text("屏蔽知乎盐选付费内容") },
-                    description = { Text("屏蔽知乎盐选会员专享的付费回答和文章") },
+                    description = { Text("屏蔽知乎盐选会员专享的付费回答和文章。") },
                     checked = blockPaidContent.value,
                     onCheckedChange = {
                         blockPaidContent.value = it
@@ -567,7 +567,7 @@ fun ContentFilterSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:blockVideo"),
                     title = { Text("直接屏蔽视频") },
-                    description = { Text("屏蔽所有视频内容，不判断赞数") },
+                    description = { Text("屏蔽所有视频内容，不看赞数。") },
                     checked = blockVideo.value,
                     onCheckedChange = {
                         blockVideo.value = it
@@ -581,7 +581,7 @@ fun ContentFilterSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag("contentFilterSettings:blockPin"),
                     title = { Text("直接屏蔽想法") },
-                    description = { Text("屏蔽所有想法（Pin）内容，不判断点赞数") },
+                    description = { Text("屏蔽所有想法（Pin）内容，不看赞数。") },
                     checked = blockPin.value,
                     onCheckedChange = {
                         blockPin.value = it
@@ -594,7 +594,7 @@ fun ContentFilterSettingsScreen(
                 val reverseBlock = remember { mutableStateOf(settings.getBoolean("reverseBlock", false)) }
                 SettingItemWithSwitch(
                     title = { Text("反向屏蔽（吃\uD83D\uDCA9模式）") },
-                    description = { Text("开启后，首页将只保留广告和付费内容，屏蔽其余所有内容") },
+                    description = { Text("开启后首页只保留广告和付费内容，其余全部屏蔽。") },
                     checked = reverseBlock.value,
                     onCheckedChange = {
                         reverseBlock.value = it
@@ -653,7 +653,7 @@ fun ContentFilterSettingsScreen(
                         title = { Text("过滤统计") },
                         description = {
                             Text(
-                                "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情",
+                                "已累计过滤 ${filterStats?.filteredCount ?: 0} 条内容，点击查看详情。",
                             )
                         },
                         onClick = { showStatsDialog = true },

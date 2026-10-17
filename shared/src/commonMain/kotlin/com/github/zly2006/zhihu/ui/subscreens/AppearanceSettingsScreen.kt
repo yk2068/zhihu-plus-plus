@@ -489,7 +489,7 @@ fun AppearanceSettingsScreen(
                 AnimatedVisibility(visible = !useDynamicColor) {
                     SettingItem(
                         title = { Text("自定义主题色") },
-                        description = { Text("点击选择您喜欢的主题颜色") },
+                        description = { Text("点击选择主题颜色。") },
                         onClick = { showColorPicker = true },
                         endAction = {
                             Box(
@@ -523,7 +523,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItem(
                     title = { Text("唤起浏览器主题色") },
-                    description = { Text("应用内浏览器的工具栏颜色") },
+                    description = { Text("应用内浏览器工具栏的颜色。") },
                     onClick = { showLuotianYiColorPicker = true },
                     endAction = {
                         Box(
@@ -563,7 +563,7 @@ fun AppearanceSettingsScreen(
 
                 SettingItem(
                     title = { Text("自定义背景颜色") },
-                    description = { Text(if (currentIsDarkTheme) "深色模式背景色" else "浅色模式背景色") },
+                    description = { Text(if (currentIsDarkTheme) "点击选择深色模式下的背景色。" else "点击选择浅色模式下的背景色。") },
                     onClick = { showBackgroundColorPicker = true },
                     endAction = {
                         Box(
@@ -671,7 +671,7 @@ fun AppearanceSettingsScreen(
                 }
                 SettingItem(
                     title = { Text("字号") },
-                    description = { Text("调整内容文字大小 ($fontSize%)") },
+                    description = { Text("调整内容文字大小，当前 $fontSize%。") },
                     settingKey = "fontScale",
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("fontScale"),
@@ -693,7 +693,7 @@ fun AppearanceSettingsScreen(
                 var lineHeight by remember { mutableIntStateOf(settings.getInt(PREF_LINE_HEIGHT, 160)) }
                 SettingItem(
                     title = { Text("行高") },
-                    description = { Text("调整内容行间距 (${lineHeight / 100f})") },
+                    description = { Text("调整内容行间距，当前 ${lineHeight / 100f} 倍。") },
                     bottomAction = {
                         Slider(
                             value = lineHeight.toFloat(),
@@ -711,7 +711,7 @@ fun AppearanceSettingsScreen(
                 var blockSpacing by remember { mutableIntStateOf(settings.getInt(PREF_BLOCK_SPACING, 100)) }
                 SettingItem(
                     title = { Text("段间距") },
-                    description = { Text("调整正文段落和块级内容间距 ($blockSpacing%)") },
+                    description = { Text("调整正文段落与块级内容的间距，当前 $blockSpacing%。") },
                     settingKey = PREF_BLOCK_SPACING,
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(PREF_BLOCK_SPACING),
@@ -741,7 +741,7 @@ fun AppearanceSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_SEGMENT_HIGHLIGHT_TAG),
                     title = { Text("显示划线段评") },
-                    description = { Text("回答和文章里带段评的句子下方的虚线下划线。关闭后这些句子和普通文字一样，不再能点开赞数和评论。") },
+                    description = { Text("带段评的句子下方显示虚线下划线，点击可看段评；关闭后不再显示，也无法点开。") },
                     checked = segmentHighlightEnabled.value,
                     onCheckedChange = {
                         segmentHighlightEnabled.value = it
@@ -851,7 +851,7 @@ fun AppearanceSettingsScreen(
                 SettingItemWithSwitch(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_USE_WEBVIEW_TAG),
                     title = { Text("使用 WebView 显示文章") },
-                    description = { Text("关闭后使用 Compose 渲染，支持代码高亮等高级功能。警告：这个渲染模式不再推荐，非专业人士请不要开启！") },
+                    description = { Text("开启后用 WebView 渲染文章；关闭后改用 Compose 渲染，支持代码高亮，但该模式已不再推荐。") },
                     checked = articleUseWebview.value,
                     enabled = isLegacyWebViewSupported,
                     onCheckedChange = {
@@ -1036,7 +1036,7 @@ fun AppearanceSettingsScreen(
                     SettingItem(
                         title = { Text("回答切换灵敏度") },
                         description = {
-                            Text("当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x，数值越高，滑动越短；同时作用于上下和左右切换。")
+                            Text("当前 ${(answerSwitchSensitivity * 10).roundToInt() / 10f}x。数值越高越灵敏，切换所需的滑动距离越短，上下与左右切换同时生效。")
                         },
                         settingKey = ANSWER_SWITCH_SENSITIVITY_PREFERENCE_KEY,
                         highlightedKey = settingKey,
@@ -1347,7 +1347,7 @@ fun AppearanceSettingsScreen(
                     modifier = Modifier.testTag(APPEARANCE_SETTINGS_COLLECTION_DIRECT_BROWSE_TAG),
                     title = { Text("收藏直达浏览（测试）") },
                     description = {
-                        Text("测试功能，请谨慎开启，可能存在问题。开启后支持收藏夹直览、顺序模式与随机模式，欢迎提交 Issue。")
+                        Text("测试功能，可能存在问题，请谨慎开启。开启后支持收藏夹直览、顺序模式与随机模式。")
                     },
                     checked = collectionDirectBrowse.value,
                     onCheckedChange = {
@@ -1391,7 +1391,7 @@ fun AppearanceSettingsScreen(
                 }
                 SettingItemWithSwitch(
                     title = { Text("点击推荐卡片答主进入个人主页") },
-                    description = { Text("主页推荐卡片里的答主头像和昵称可点，点了直接进答主个人主页；关闭后这块不再响应点击。") },
+                    description = { Text("点击主页推荐卡片中的答主头像和昵称可以进答主个人主页。") },
                     checked = homeFeedAuthorOpensProfile.value,
                     onCheckedChange = {
                         homeFeedAuthorOpensProfile.value = it
@@ -1492,7 +1492,7 @@ fun AppearanceSettingsScreen(
                 val useCustomNavHost = remember { mutableStateOf(settings.getBoolean("use_custom_nav_host", true)) }
                 SettingItemWithSwitch(
                     title = { Text("使用自定义导航") },
-                    description = { Text("使用自定义导航替代系统默认的导航组件，可能部分提升国产手机上的操作手感，请视情况开启。") },
+                    description = { Text("用自定义导航替代系统导航组件，部分机型上操作手感更好，请视情况开启。") },
                     checked = useCustomNavHost.value,
                     onCheckedChange = {
                         useCustomNavHost.value = it
@@ -1755,7 +1755,7 @@ private fun ReadingPositionMemorySettingItem(
     SettingItem(
         modifier = Modifier.testTag(APPEARANCE_SETTINGS_READING_POSITION_TAG),
         title = { Text("记忆阅读位置") },
-        description = { Text("回到上次读到的位置，最多记 $limit 篇。") },
+        description = { Text("重新打开时回到上次读到的位置，最多记住 $limit 篇。") },
         onClick = {
             if (!enabled) setEnabled(true)
             showLimitDialog = true

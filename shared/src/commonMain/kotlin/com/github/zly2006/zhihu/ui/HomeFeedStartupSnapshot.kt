@@ -21,6 +21,11 @@ import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.RecommendationMode
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.util.Log
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readString
+import kotlinx.io.writeString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
@@ -64,4 +69,50 @@ fun decodeHomeFeedStartupSnapshot(serialized: String?): List<FeedDisplayItem> {
             .json
             .decodeFromString<List<FeedDisplayItem>>(serialized)
     }.getOrDefault(emptyList())
+}
+
+/**
+ * 冷启动时是否要立刻联网刷新首页。
+ *
+ * 开关打开时总是刷新；关闭时除非完全读不到快照（首次安装、清过缓存、刚换推荐算法，
+ * 这时不联网首页就是空白的），否则只用快照，不再请求网络。
+ */
+fun shouldRefreshHomeFeedOnStartup(
+    autoRefreshOnStartup: Boolean,
+    hasSnapshot: Boolean,
+): Boolean = autoRefreshOnStartup || !hasSnapshot
+
+/**
+ * 读取启动快照。
+ *
+ * 任何异常都退化成「没有快照」，但会打日志：此前这里是静默 `runCatching`，
+ * 快照写失败或读失败时用户只会觉得「关了自动刷新还是会刷新」，排查不到原因。
+ */
+fun readHomeFeedStartupSnapshot(file: Path): List<FeedDisplayItem> = try {
+    if (SystemFileSystem.exists(file)) {
+        SystemFileSystem.source(file).buffered().use { source ->
+            decodeHomeFeedStartupSnapshot(source.readString())
+        }
+    } else {
+        emptyList()
+    }
+} catch (error: Exception) {
+    Log.e("HomeFeedStartupSnapshot", "Failed to read home feed startup snapshot: $file", error)
+    emptyList()
+}
+
+/** 写入启动快照，失败时返回 false 并打日志（不影响首页正常使用）。 */
+fun writeHomeFeedStartupSnapshot(
+    file: Path,
+    items: List<FeedDisplayItem>,
+): Boolean {
+    val serialized = encodeHomeFeedStartupSnapshot(items) ?: return false
+
+    return try {
+        SystemFileSystem.sink(file).buffered().use { it.writeString(serialized) }
+        true
+    } catch (error: Exception) {
+        Log.e("HomeFeedStartupSnapshot", "Failed to write home feed startup snapshot: $file", error)
+        false
+    }
 }

@@ -61,6 +61,7 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -207,7 +208,7 @@ private val settingsSearchEntries = buildList {
         appearanceEntry(
             "appearance.homeFeedAuthorOpensProfile",
             "点击推荐卡片答主进入个人主页",
-            "主页推荐卡片里点答主头像或昵称直接进答主个人主页。",
+            "点击主页推荐卡片中的答主头像和昵称可以进答主个人主页。",
             HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY,
             listOf("答主", "作者", "个人主页", "用户详情", "主页", "卡片"),
         ),
@@ -250,6 +251,15 @@ private val settingsSearchEntries = buildList {
 
     add(recommendEntry("recommend.recommendationMode", "推荐算法", "选择 Web、Android、本地或混合推荐。", "recommendationMode", listOf("推荐来源", "Web 推荐", "Android 推荐", "本地推荐", "混合推荐")))
     add(recommendEntry("recommend.loginForRecommendation", "推荐内容时登录", "获取推荐内容时是否带登录凭证。", "loginForRecommendation"))
+    add(
+        recommendEntry(
+            "recommend.autoRefreshHomeOnStartup",
+            "启动时自动刷新首页",
+            "关闭后启动时只显示上次的推荐内容，不自动联网刷新。",
+            AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY,
+            listOf("启动刷新", "自动刷新", "首页缓存", "省流", "刷新首页"),
+        ),
+    )
     add(recommendEntry("recommend.qualityFilterMode", "质量屏蔽", "选择不屏蔽、显示屏蔽规则或直接隐藏低质量内容。", QUALITY_FILTER_MODE_PREFERENCE_KEY, listOf("低质量", "屏蔽规则", "隐藏")))
     add(recommendEntry("recommend.enableContentFilter", "启用智能内容过滤", "过滤重复出现但未点击内容。", "enableContentFilter"))
     add(recommendEntry("recommend.filterFollowedUserContent", "过滤已关注用户内容", "控制是否过滤已关注用户的内容。", "filterFollowedUserContent"))

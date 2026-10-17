@@ -161,11 +161,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
-import kotlinx.io.buffered
 import kotlinx.io.files.Path
-import kotlinx.io.files.SystemFileSystem
-import kotlinx.io.readString
-import kotlinx.io.writeString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
@@ -228,7 +224,6 @@ fun HomeScreen(
 
     val duo3HomeAccount = settings.getBoolean("duo3_home_account", false)
     val showRefreshFab = settings.getBoolean("showRefreshFab", true)
-    val autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true)
     val showUnreadBadge = notificationSettings.getUnreadBadgeEnabled()
     var showAccountBottomSheet by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -312,12 +307,8 @@ fun HomeScreen(
     val latestLoadedDisplayItems = viewModel.latestLoadedDisplayItems.value
     LaunchedEffect(latestLoadedDisplayItems) {
         if (latestLoadedDisplayItems.isNotEmpty()) {
-            encodeHomeFeedStartupSnapshot(latestLoadedDisplayItems)?.let { serialized ->
-                withContext(Dispatchers.Default) {
-                    runCatching {
-                        SystemFileSystem.sink(startupCacheFile).buffered().use { it.writeString(serialized) }
-                    }
-                }
+            withContext(Dispatchers.Default) {
+                writeHomeFeedStartupSnapshot(startupCacheFile, latestLoadedDisplayItems)
             }
         }
     }
@@ -336,7 +327,13 @@ fun HomeScreen(
 
     // 预取缓冲：滑到底部后若「未过滤条目」相对已消费量不足 5 条，就继续翻页补足。
     // 依赖 consumedUnfilteredCount 与 completedPageCount 一起触发，避免预取完成后不再复查。
-    LaunchedEffect(completedPageCount, viewModel.consumedUnfilteredCount) {
+    //
+    // hasFeedContent 这个前置判断很关键：列表还空的时候 shouldPrefetchMore 恒为 true，
+    // 而这个 effect 声明在启动加载之前，会先于「启动时自动刷新首页」的判断跑起来，
+    // 于是即便关掉了开关、也还有启动快照，冷启动照样立刻发一次网络请求 —— 表现为开关失效。
+    val hasFeedContent = viewModel.displayItems.isNotEmpty()
+    LaunchedEffect(completedPageCount, viewModel.consumedUnfilteredCount, hasFeedContent) {
+        if (!hasFeedContent) return@LaunchedEffect
         while (viewModel.shouldPrefetchMore) {
             viewModel.loadMore(paginationEnvironment)
             // loadMore 是异步的；等它落地后重新判断，isEnd 或 isLoading 会自然终止循环。
@@ -344,40 +341,34 @@ fun HomeScreen(
         }
     }
 
-    // 初始加载：先用上次的启动快照把界面填上，再在后台刷新，避免启动时干等网络。
+    // 初始加载：先用上次的启动快照把界面填上；「启动时自动刷新首页」关闭时到此为止，不联网。
+    // 只有连快照都没有（首次安装、清过缓存、刚换推荐算法）才联网兜底，否则首页会一片空白。
     LaunchedEffect(currentRecommendationMode, account.login) {
-        if (!account.login &&
-            settings.getBoolean("loginForRecommendation", true)
-        ) {
+        if (!account.login && settings.getBoolean("loginForRecommendation", true)) {
             requestLoginNavigation()
-        } else if (viewModel.displayItems.isEmpty()) {
-            val cachedItems = withContext(Dispatchers.Default) {
-                runCatching {
-                    if (SystemFileSystem.exists(startupCacheFile)) {
-                        SystemFileSystem.source(startupCacheFile).buffered().use { source ->
-                            decodeHomeFeedStartupSnapshot(source.readString())
-                        }
-                    } else {
-                        emptyList()
-                    }
-                }.getOrDefault(emptyList())
-            }
-            // 缓存只覆盖「未显示的部分」：先展示，再决定是否立刻联网。
-            // HIDE 模式下快照里可能残留上次判定为「已屏蔽」的条目，这里同样要丢弃。
-            if (cachedItems.isNotEmpty()) {
-                viewModel.addDisplayItems(
-                    cachedItems,
-                    dropQualityFiltered = settings.getString(
-                        QUALITY_FILTER_MODE_PREFERENCE_KEY,
-                        QualityFilterMode.RULES.name,
-                    ) == QualityFilterMode.HIDE.name,
-                )
-                if (autoRefreshOnStartup) {
-                    viewModel.refresh(paginationEnvironment)
-                }
-            } else {
-                viewModel.refresh(paginationEnvironment)
-            }
+            return@LaunchedEffect
+        }
+        if (viewModel.displayItems.isNotEmpty()) return@LaunchedEffect
+
+        val cachedItems = withContext(Dispatchers.Default) {
+            readHomeFeedStartupSnapshot(startupCacheFile)
+        }
+        // HIDE 模式下快照里可能残留上次判定为「已屏蔽」的条目，这里同样要丢弃。
+        viewModel.addDisplayItems(
+            cachedItems,
+            dropQualityFiltered = settings.getString(
+                QUALITY_FILTER_MODE_PREFERENCE_KEY,
+                QualityFilterMode.RULES.name,
+            ) == QualityFilterMode.HIDE.name,
+        )
+
+        // 开关按执行时刻的取值判断，不用组合期的快照值，避免「刚改完设置就重启」读到旧值。
+        val refreshOnStartup = shouldRefreshHomeFeedOnStartup(
+            autoRefreshOnStartup = settings.getBoolean(AUTO_REFRESH_HOME_ON_STARTUP_PREFERENCE_KEY, true),
+            hasSnapshot = viewModel.displayItems.isNotEmpty(),
+        )
+        if (refreshOnStartup) {
+            viewModel.refresh(paginationEnvironment)
         }
     }
 

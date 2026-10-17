@@ -128,7 +128,7 @@ fun SystemAndUpdateSettingsScreen(
                     }
                     SettingItemWithSwitch(
                         title = { Text("关闭窗口时退出应用") },
-                        description = { Text("关闭最后一个窗口时同时退出 macOS 应用；默认关闭") },
+                        description = { Text("关闭最后一个窗口时同时退出 macOS 应用，默认关闭。") },
                         checked = quitOnWindowClose,
                         onCheckedChange = {
                             quitOnWindowClose = it
@@ -142,7 +142,7 @@ fun SystemAndUpdateSettingsScreen(
                 var allowTelemetry by remember { mutableStateOf(settings.getBoolean("allowTelemetry", true)) }
                 SettingItemWithSwitch(
                     title = { Text("允许发送遥测统计数据") },
-                    description = { Text("仅用于统计使用人数，不包含个人隐私") },
+                    description = { Text("仅用于统计使用人数，不包含个人隐私。") },
                     checked = allowTelemetry,
                     onCheckedChange = {
                         allowTelemetry = it

@@ -27,8 +27,10 @@ import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Search
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class HomeFeedStartupSnapshotTest {
     @Test
@@ -154,6 +156,17 @@ class HomeFeedStartupSnapshotTest {
     @Test
     fun emptySnapshotDoesNotProduceCachePayload() {
         assertNull(encodeHomeFeedStartupSnapshot(emptyList()))
+    }
+
+    @Test
+    fun startupRefreshRespectsSwitch() {
+        // 开关打开：无论有没有快照都联网刷新。
+        assertTrue(shouldRefreshHomeFeedOnStartup(autoRefreshOnStartup = true, hasSnapshot = true))
+        assertTrue(shouldRefreshHomeFeedOnStartup(autoRefreshOnStartup = true, hasSnapshot = false))
+
+        // 开关关闭：有快照就只显示快照，只有完全没有快照时才联网兜底。
+        assertFalse(shouldRefreshHomeFeedOnStartup(autoRefreshOnStartup = false, hasSnapshot = true))
+        assertTrue(shouldRefreshHomeFeedOnStartup(autoRefreshOnStartup = false, hasSnapshot = false))
     }
 
     @Test
