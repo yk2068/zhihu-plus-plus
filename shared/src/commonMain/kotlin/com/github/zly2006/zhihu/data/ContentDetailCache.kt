@@ -25,14 +25,11 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.Log
-import com.github.zly2006.zhihu.viewmodel.local.ContentDetailDiskCache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlin.coroutines.cancellation.CancellationException
@@ -43,13 +40,6 @@ import kotlin.time.Clock
  * 避免对同一内容发起重复的 API 请求
  */
 object ContentDetailCache {
-    /**
-     * 可选的磁盘缓存后端。
-     * 由平台在启动/创建 PaginationEnvironment 时注入（见各端 PaginationEnvironment 的 init 块）。
-     * 一旦设置，已进入显示列表的内容详情会写入磁盘，下次冷启动优先从本地读取。
-     */
-    var diskCache: ContentDetailDiskCache? = null
-
     private data class CacheEntry(
         val content: DataHolder.Content,
         val timestamp: Long,
@@ -85,18 +75,6 @@ object ContentDetailCache {
                     cache.remove(key)
                 }
             }
-        }
-
-        // 内存未命中，尝试从磁盘缓存读取（冷启动优先，跳过网络请求）
-        diskCache?.read(contentType, contentId)?.let { rawJsonStr ->
-            val diskContent = runCatching {
-                parseRawContent(navDestination, Json.parseToJsonElement(rawJsonStr).jsonObject)
-            }.getOrNull() ?: return@let
-            Log.d("ContentDetailCache", "Disk cache hit for $contentType:$contentId")
-            mutex.withLock {
-                cache[key] = CacheEntry(diskContent, Clock.System.now().toEpochMilliseconds())
-            }
-            return diskContent
         }
 
         // 缓存未命中，从 API 获取
@@ -176,28 +154,13 @@ suspend fun fetchZhihuContentDetail(
     return content to json
 }
 
-/**
- * 将 API 返回的原始详情 JSON 解码为 [DataHolder.Content]，供磁盘缓存回读使用。
- */
-private fun parseRawContent(destination: NavDestination, json: JsonObject): DataHolder.Content? = when (destination) {
-    is Article -> decodeArticleContentDetail(destination, json)
-    is Question -> decodeQuestionContentDetail(json)
-    is Pin -> decodePinContentDetail(json)
-    else -> null
-}
-
 suspend fun ContentDetailCache.getOrFetchContentDetail(
     destination: NavDestination,
     fetchJson: suspend (String, String) -> JsonObject?,
 ): DataHolder.Content? =
     runCatching {
         getOrFetch(destination) { navDestination ->
-            val (content, rawJson) = fetchZhihuContentDetail(navDestination, fetchJson)
-            rawJson?.let { json ->
-                val (contentType, contentId) = extractContentInfo(navDestination) ?: return@let
-                runCatching { diskCache?.write(contentType, contentId, json.toString()) }
-            }
-            content
+            fetchZhihuContentDetail(navDestination, fetchJson).first
         }
     }.getOrElse { error ->
         if (error is CancellationException) throw error

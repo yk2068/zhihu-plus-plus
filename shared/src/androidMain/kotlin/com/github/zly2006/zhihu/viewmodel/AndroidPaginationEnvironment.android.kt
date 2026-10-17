@@ -41,7 +41,6 @@ import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AigcVoteVoter
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -81,7 +80,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
@@ -128,13 +126,6 @@ open class SharedAndroidPaginationEnvironment(
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
-    init {
-        runCatching {
-            ContentDetailCache.diskCache =
-                RoomContentDetailDiskCache(getLocalContentDatabase(context).cachedContentDetailDao())
-        }
-    }
-
     private val localRecommendationEngine by lazy {
         val dao = getLocalContentDatabase(context).contentDao()
         buildLocalRecommendationEngine(dao, context.asApiEnvironment())

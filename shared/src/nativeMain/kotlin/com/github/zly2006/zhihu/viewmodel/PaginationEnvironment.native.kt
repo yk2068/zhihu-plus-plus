@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.github.zly2006.zhihu.account.NativeHistoryStorage
 import com.github.zly2006.zhihu.account.defaultNativeAccountStore
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.target
@@ -48,7 +47,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getNativeLocalContentDatabase
 import io.ktor.client.HttpClient
@@ -102,14 +100,6 @@ internal class NativePaginationEnvironment(
     private val settingsStore = nativeSettingsStore("settings.properties")
     private val historyStorage = NativeHistoryStorage()
     private val contentFilterDatabase = getContentFilterDatabase()
-
-    init {
-        runCatching {
-            getNativeLocalContentDatabase()?.let { db ->
-                ContentDetailCache.diskCache = RoomContentDetailDiskCache(db.cachedContentDetailDao())
-            }
-        }
-    }
 
     private val localRecommendationEngine by lazy {
         getNativeLocalContentDatabase()?.contentDao()?.let { dao ->

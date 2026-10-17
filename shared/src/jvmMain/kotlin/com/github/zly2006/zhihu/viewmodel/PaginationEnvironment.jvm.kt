@@ -19,7 +19,6 @@ package com.github.zly2006.zhihu.viewmodel
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -53,7 +52,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
@@ -119,14 +117,6 @@ class DesktopPaginationEnvironment(
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDb = desktopContentFilterDb
-
-    init {
-        runCatching {
-            val databaseFile = desktopZhihuDataFile("local-content.db").also { it.parentFile?.mkdirs() }
-            ContentDetailCache.diskCache =
-                RoomContentDetailDiskCache(getLocalContentDatabase(databaseFile).cachedContentDetailDao())
-        }
-    }
 
     private val localRecommendationEngine by lazy {
         val databaseFile = desktopZhihuDataFile("local-content.db")

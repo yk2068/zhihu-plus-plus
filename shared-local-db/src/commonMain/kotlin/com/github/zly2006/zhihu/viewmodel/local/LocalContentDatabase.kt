@@ -30,16 +30,14 @@ import com.github.zly2006.zhihu.data.applyPlatformDriver
 import kotlinx.coroutines.Dispatchers
 
 @Database(
-    entities = [CrawlingTask::class, CrawlingResult::class, LocalFeed::class, UserBehavior::class, CachedContentDetail::class],
-    version = 6, // v6: 新增 cached_content_details 表，持久化已进入显示列表的内容详情
+    entities = [CrawlingTask::class, CrawlingResult::class, LocalFeed::class, UserBehavior::class],
+    version = 7, // v7: 移除 v6 的 cached_content_details 表（详情落盘缓存已删除）
     exportSchema = false,
 )
 @TypeConverters(LocalDatabaseConverters::class)
 @ConstructedBy(LocalContentDatabaseConstructor::class)
 abstract class LocalContentDatabase : RoomDatabase() {
     abstract fun contentDao(): LocalContentDao
-
-    abstract fun cachedContentDetailDao(): CachedContentDetailDao
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
@@ -47,26 +45,17 @@ expect object LocalContentDatabaseConstructor : RoomDatabaseConstructor<LocalCon
     override fun initialize(): LocalContentDatabase
 }
 
-private val migration5To6 = object : Migration(5, 6) {
+private val migration6To7 = object : Migration(6, 7) {
     override fun migrate(connection: SQLiteConnection) {
-        connection.execSQL(
-            """
-            CREATE TABLE IF NOT EXISTS `cached_content_details` (
-                `id` TEXT NOT NULL PRIMARY KEY,
-                `contentType` TEXT NOT NULL,
-                `contentId` TEXT NOT NULL,
-                `json` TEXT NOT NULL,
-                `updatedAt` INTEGER NOT NULL
-            )
-            """.trimIndent(),
-        )
+        // 详情落盘缓存已整体移除，v6 建的表一并丢弃。
+        connection.execSQL("DROP TABLE IF EXISTS `cached_content_details`")
     }
 }
 
 fun buildLocalContentDatabase(
     builder: Builder<LocalContentDatabase>,
 ): LocalContentDatabase = builder
-    .addMigrations(migration5To6)
+    .addMigrations(migration6To7)
     .fallbackToDestructiveMigration(true)
     .applyPlatformDriver()
     .setQueryCoroutineContext(Dispatchers.Default)
