@@ -48,7 +48,6 @@ import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
 import com.github.zly2006.zhihu.util.toUserFacingMessage
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
-import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.call.NoTransformationFoundException
 import io.ktor.client.request.HttpRequestBuilder
@@ -460,16 +459,6 @@ interface ContentBlocklistEnvironment {
     suspend fun removeBlockedQuestionAuthor(userId: String) = Unit
 }
 
-interface LocalRecommendationEnvironment : ZhihuApiEnvironment {
-    fun localRecommendationEngine(): LocalRecommendationEngine? = null
-
-    suspend fun handleLocalRecommendationFailure(error: Exception) {
-        handleFetchFailure("LocalHomeFeedViewModel", error)
-    }
-
-    suspend fun showLocalRecommendationDatabaseError() = Unit
-}
-
 interface ClipboardEnvironment {
     fun setPlainTextClipboard(
         label: String,
@@ -535,7 +524,6 @@ interface PaginationEnvironment :
     MobileHomeFeedEnvironment,
     FeedDisplayEnvironment,
     ContentInteractionEnvironment,
-    LocalRecommendationEnvironment,
     ClipboardEnvironment,
     ProfileLoadEnvironment,
     ArticleLoadEnvironment,

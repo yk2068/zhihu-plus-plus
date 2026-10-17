@@ -51,9 +51,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.FeedDisplayFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.filter.toFeedFilterSettings
-import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.request.setBody
 import io.ktor.http.contentType
@@ -117,13 +114,6 @@ class DesktopPaginationEnvironment(
     private val settingsStore = desktopSettingsStore()
     private val historyStorage = DesktopHistoryStorage()
     private val contentFilterDb = desktopContentFilterDb
-
-    private val localRecommendationEngine by lazy {
-        val databaseFile = desktopZhihuDataFile("local-content.db")
-        databaseFile.parentFile?.mkdirs()
-        val dao = getLocalContentDatabase(databaseFile).contentDao()
-        buildLocalRecommendationEngine(dao, this)
-    }
 
     override fun httpClient(): HttpClient = store.client.httpClient()
 
@@ -296,8 +286,6 @@ class DesktopPaginationEnvironment(
             )
         }
     }
-
-    override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
 
     override fun hasImageExportPermission(): Boolean = true
 

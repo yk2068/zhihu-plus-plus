@@ -48,7 +48,6 @@ import com.github.zly2006.zhihu.data.HistoryStorage
 import com.github.zly2006.zhihu.data.QualityFilterSettings
 import com.github.zly2006.zhihu.data.ZhihuCookieStorage
 import com.github.zly2006.zhihu.data.ZhihuJson.json
-import com.github.zly2006.zhihu.data.asApiEnvironment
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.filter.ContentOpenEventSupport
@@ -79,9 +78,6 @@ import com.github.zly2006.zhihu.viewmodel.filter.ForegroundReadFilterPipeline
 import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
-import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
-import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
@@ -126,10 +122,6 @@ open class SharedAndroidPaginationEnvironment(
     private val allowGuestAccess: Boolean,
 ) : AndroidContextPaginationEnvironment,
     CollectionContentEnvironment {
-    private val localRecommendationEngine by lazy {
-        val dao = getLocalContentDatabase(context).contentDao()
-        buildLocalRecommendationEngine(dao, context.asApiEnvironment())
-    }
     private val settingsStore by lazy { androidSettingsStore(context) }
     private val userMessageSink by lazy { androidUserMessageSink(context) }
     private val aigcVoteHttpClient by lazy {
@@ -409,23 +401,6 @@ open class SharedAndroidPaginationEnvironment(
                     put("clear", true)
                 }.toString(),
             )
-        }
-    }
-
-    override fun localRecommendationEngine(): LocalRecommendationEngine = localRecommendationEngine
-
-    override suspend fun handleLocalRecommendationFailure(error: Exception) {
-        Log.e("LocalHomeFeedViewModel", "Error fetching local feeds", error)
-    }
-
-    override suspend fun showLocalRecommendationDatabaseError() {
-        withContext(Dispatchers.Main) {
-            AlertDialog
-                .Builder(context)
-                .setTitle("数据库错误")
-                .setMessage("本地推荐系统的数据库未正确初始化。请尝试重启应用或清除应用数据。")
-                .setPositiveButton("确定") { dialog, _ -> dialog.dismiss() }
-                .show()
         }
     }
 
