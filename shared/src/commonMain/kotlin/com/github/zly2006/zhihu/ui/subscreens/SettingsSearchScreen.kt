@@ -60,7 +60,6 @@ import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
-import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY_LIMIT
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
@@ -186,8 +185,8 @@ private val settingsSearchEntries = buildList {
         appearanceEntry(
             "appearance.readingPositionMemoryLimit",
             "记忆条数",
-            "设置最多记住多少篇内容的阅读位置，超出后淘汰最久没读的一篇。",
-            PREF_READING_POSITION_MEMORY_LIMIT,
+            "在「记忆阅读位置」开关弹出的窗口里设置最多记住多少篇。",
+            PREF_READING_POSITION_MEMORY,
             listOf("阅读位置", "阅读进度", "记忆条数", "条数", "记忆"),
         ),
     )

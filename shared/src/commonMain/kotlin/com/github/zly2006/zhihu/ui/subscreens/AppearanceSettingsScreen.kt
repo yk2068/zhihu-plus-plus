@@ -44,6 +44,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
@@ -61,6 +62,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -125,6 +127,7 @@ import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
 import com.github.zly2006.zhihu.ui.components.SettingItemOverall
 import com.github.zly2006.zhihu.ui.components.SettingItemWithSwitch
+import com.github.zly2006.zhihu.ui.components.SwitchWithIcon
 import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
@@ -173,8 +176,6 @@ const val APPEARANCE_SETTINGS_LANDSCAPE_LIST_DETAIL_TAG = "appearanceSettings.la
 const val APPEARANCE_SETTINGS_SEGMENT_HIGHLIGHT_TAG = "appearanceSettings.segmentHighlightEnabled"
 const val APPEARANCE_SETTINGS_READING_POSITION_TAG = "appearanceSettings.readingPositionMemory"
 const val APPEARANCE_SETTINGS_READING_POSITION_LIMIT_TAG = "appearanceSettings.readingPositionMemoryLimit"
-const val APPEARANCE_SETTINGS_READING_POSITION_LIMIT_PRESET_TAG_PREFIX =
-    "appearanceSettings.readingPositionMemoryLimit.preset."
 const val APPEARANCE_SETTINGS_READING_POSITION_LIMIT_CUSTOM_TAG =
     "appearanceSettings.readingPositionMemoryLimit.custom"
 
@@ -754,32 +755,11 @@ fun AppearanceSettingsScreen(
                     bringIntoViewRequester = requesterFor(PREF_SEGMENT_HIGHLIGHT_ENABLED),
                 )
 
-                val readingPositionMemoryEnabled = remember {
-                    mutableStateOf(
-                        settings.getBoolean(PREF_READING_POSITION_MEMORY, DEFAULT_READING_POSITION_MEMORY),
-                    )
-                }
-                SettingItemWithSwitch(
-                    modifier = Modifier.testTag(APPEARANCE_SETTINGS_READING_POSITION_TAG),
-                    title = { Text("记忆阅读位置") },
-                    description = { Text("重新打开文章或回答时回到上次读到的位置。关闭后每次进入都从头开始读。") },
-                    checked = readingPositionMemoryEnabled.value,
-                    onCheckedChange = {
-                        readingPositionMemoryEnabled.value = it
-                        settings.putBoolean(PREF_READING_POSITION_MEMORY, it)
-                    },
-                    settingKey = PREF_READING_POSITION_MEMORY,
+                ReadingPositionMemorySettingItem(
+                    settings = settings,
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor(PREF_READING_POSITION_MEMORY),
                 )
-
-                AnimatedVisibility(visible = readingPositionMemoryEnabled.value) {
-                    ReadingPositionMemoryLimitSettingItem(
-                        settings = settings,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_READING_POSITION_MEMORY_LIMIT),
-                    )
-                }
             }
 
             // ── 信息流 ──────────────────────────────────────────────────────────
@@ -1866,17 +1846,20 @@ fun AppearanceSettingsScreen(
 }
 
 /**
- * 「记忆阅读位置」的条数设置。
+ * 「记忆阅读位置」开关行。
  *
- * 条数决定最多保留多少篇内容的位置，超出后按最近阅读淘汰。默认 1 条，只跟随最近读过的那一篇。
+ * 打开开关、或在已开启时点击整行，都会弹出条数设置。条数决定最多保留多少篇内容的位置，
+ * 超出后按最近阅读淘汰，默认 1 条；条数直接写在描述里，不再单独占一行设置项。
  */
 @Composable
-private fun ReadingPositionMemoryLimitSettingItem(
+private fun ReadingPositionMemorySettingItem(
     settings: SettingsStore,
     highlightedKey: String,
     bringIntoViewRequester: BringIntoViewRequester,
 ) {
-    val presets = listOf(1, 3, 5, 10)
+    var enabled by remember {
+        mutableStateOf(settings.getBoolean(PREF_READING_POSITION_MEMORY, DEFAULT_READING_POSITION_MEMORY))
+    }
     var limit by remember {
         mutableIntStateOf(
             normalizedReadingPositionLimit(
@@ -1884,81 +1867,102 @@ private fun ReadingPositionMemoryLimitSettingItem(
             ),
         )
     }
-    var customLimitText by remember { mutableStateOf(limit.toString()) }
+    var showLimitDialog by remember { mutableStateOf(false) }
 
-    fun persist(next: Int) {
-        val normalized = normalizedReadingPositionLimit(next)
-        limit = normalized
-        customLimitText = normalized.toString()
-        settings.putInt(PREF_READING_POSITION_MEMORY_LIMIT, normalized)
+    fun setEnabled(next: Boolean) {
+        enabled = next
+        settings.putBoolean(PREF_READING_POSITION_MEMORY, next)
     }
 
     SettingItem(
-        modifier = Modifier.testTag(APPEARANCE_SETTINGS_READING_POSITION_LIMIT_TAG),
-        title = { Text("记忆条数") },
-        description = {
-            Text(
-                "最多记住多少篇内容的阅读位置，范围为 $MIN_READING_POSITION_MEMORY_LIMIT-" +
-                    "$MAX_READING_POSITION_MEMORY_LIMIT；超出后淘汰最久没读的一篇。",
+        modifier = Modifier.testTag(APPEARANCE_SETTINGS_READING_POSITION_TAG),
+        title = { Text("记忆阅读位置") },
+        description = { Text("回到上次读到的位置，最多记 $limit 篇。") },
+        onClick = {
+            if (!enabled) setEnabled(true)
+            showLimitDialog = true
+        },
+        endAction = {
+            SwitchWithIcon(
+                checked = enabled,
+                onCheckedChange = { checked ->
+                    setEnabled(checked)
+                    // 只在打开时弹窗：关闭不需要选条数，弹窗会挡住「刚关掉」的反馈。
+                    if (checked) showLimitDialog = true
+                },
             )
         },
-        settingKey = PREF_READING_POSITION_MEMORY_LIMIT,
+        settingKey = PREF_READING_POSITION_MEMORY,
         highlightedKey = highlightedKey,
         bringIntoViewRequester = bringIntoViewRequester,
-        bottomAction = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    presets.forEach { preset ->
-                        OutlinedButton(
-                            onClick = { persist(preset) },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = if (limit == preset) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    Color.Transparent
-                                },
-                                contentColor = if (limit == preset) {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag(APPEARANCE_SETTINGS_READING_POSITION_LIMIT_PRESET_TAG_PREFIX + preset),
-                        ) {
-                            Text("$preset 条")
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = customLimitText,
-                    onValueChange = { raw ->
-                        val filtered = raw.filter(Char::isDigit).take(2)
-                        customLimitText = filtered
-                        val parsed = filtered.toIntOrNull() ?: return@OutlinedTextField
-                        when {
-                            parsed > MAX_READING_POSITION_MEMORY_LIMIT ->
-                                persist(MAX_READING_POSITION_MEMORY_LIMIT)
+    )
 
-                            parsed >= MIN_READING_POSITION_MEMORY_LIMIT -> persist(parsed)
-                            // 0 或空串：用户还在输入，等下一个数字再落盘。
-                            else -> Unit
-                        }
-                    },
+    if (showLimitDialog) {
+        ReadingPositionMemoryLimitDialog(
+            initialLimit = limit,
+            onDismiss = { showLimitDialog = false },
+            onConfirm = { next ->
+                val normalized = normalizedReadingPositionLimit(next)
+                limit = normalized
+                settings.putInt(PREF_READING_POSITION_MEMORY_LIMIT, normalized)
+                showLimitDialog = false
+            },
+        )
+    }
+}
+
+/**
+ * 记忆条数弹窗。
+ *
+ * 只有自定义输入框，没有快捷档位；输入不合法时「确定」不可点，避免把空值或越界值写进偏好。
+ */
+@Composable
+private fun ReadingPositionMemoryLimitDialog(
+    initialLimit: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    var text by remember { mutableStateOf(initialLimit.toString()) }
+    val parsed = text.toIntOrNull()
+    val valid = parsed != null && parsed in MIN_READING_POSITION_MEMORY_LIMIT..MAX_READING_POSITION_MEMORY_LIMIT
+
+    AlertDialog(
+        modifier = Modifier.testTag(APPEARANCE_SETTINGS_READING_POSITION_LIMIT_TAG),
+        onDismissRequest = onDismiss,
+        title = { Text("记忆条数") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { raw -> text = raw.filter(Char::isDigit).take(2) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
                         .testTag(APPEARANCE_SETTINGS_READING_POSITION_LIMIT_CUSTOM_TAG),
                     singleLine = true,
-                    label = { Text("自定义条数（$MIN_READING_POSITION_MEMORY_LIMIT-$MAX_READING_POSITION_MEMORY_LIMIT）") },
+                    label = { Text("条数（$MIN_READING_POSITION_MEMORY_LIMIT-$MAX_READING_POSITION_MEMORY_LIMIT）") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
+                Text(
+                    text = "超出条数后淘汰最久没读的一篇。",
+                    modifier = Modifier.padding(top = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { parsed?.let { onConfirm(it) } },
+                enabled = valid,
+            ) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
             }
         },
     )
 }
+
