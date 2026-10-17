@@ -25,16 +25,16 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.Question
 import com.github.zly2006.zhihu.util.Log
+import com.github.zly2006.zhihu.viewmodel.local.ContentDetailDiskCache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
-import com.github.zly2006.zhihu.viewmodel.local.ContentDetailDiskCache
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
@@ -87,20 +87,20 @@ object ContentDetailCache {
             }
         }
 
-    // 内存未命中，尝试从磁盘缓存读取（冷启动优先，跳过网络请求）
-    diskCache?.read(contentType, contentId)?.let { rawJsonStr ->
-        val diskContent = runCatching {
-            parseRawContent(navDestination, Json.parseToJsonElement(rawJsonStr).jsonObject)
-        }.getOrNull() ?: return@let
-        Log.d("ContentDetailCache", "Disk cache hit for $contentType:$contentId")
-        mutex.withLock {
-            cache[key] = CacheEntry(diskContent, Clock.System.now().toEpochMilliseconds())
+        // 内存未命中，尝试从磁盘缓存读取（冷启动优先，跳过网络请求）
+        diskCache?.read(contentType, contentId)?.let { rawJsonStr ->
+            val diskContent = runCatching {
+                parseRawContent(navDestination, Json.parseToJsonElement(rawJsonStr).jsonObject)
+            }.getOrNull() ?: return@let
+            Log.d("ContentDetailCache", "Disk cache hit for $contentType:$contentId")
+            mutex.withLock {
+                cache[key] = CacheEntry(diskContent, Clock.System.now().toEpochMilliseconds())
+            }
+            return diskContent
         }
-        return diskContent
-    }
 
-    // 缓存未命中，从 API 获取
-    Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
+        // 缓存未命中，从 API 获取
+        Log.d("ContentDetailCache", "Cache miss for $contentType:$contentId, fetching...")
         val content = fetcher(navDestination) ?: return null
 
         // 存入缓存
@@ -115,7 +115,6 @@ object ContentDetailCache {
 
         return content
     }
-
 }
 
 /**
