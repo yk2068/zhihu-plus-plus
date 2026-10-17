@@ -130,6 +130,13 @@ import kotlin.math.roundToInt
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
 const val QUESTION_TITLE_TAG = "question_title"
+
+/**
+ * 问题页顶部标题自动吸附开关。
+ *
+ * 开启后，正文下滑超过 160dp 时把问题标题吸附到顶栏；关闭时顶栏始终不显示问题标题。
+ */
+const val QUESTION_TITLE_SNAP_PREFERENCE_KEY = "questionTitleSnap"
 const val QUESTION_DETAIL_TOGGLE_TAG = "question_detail_toggle"
 const val QUESTION_DETAIL_CONTENT_TAG = "question_detail_content"
 const val QUESTION_DETAIL_PREVIEW_TAG = "question_detail_preview"
@@ -207,9 +214,14 @@ fun QuestionScreen(
         remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
     val topBarTitleThresholdPx = with(LocalDensity.current) { 160.dp.roundToPx() }
+    // 默认开启，与历史行为一致；关闭后顶栏始终不显示问题标题。
+    val questionTitleSnapEnabled by rememberObservedSetting(settings, QUESTION_TITLE_SNAP_PREFERENCE_KEY) {
+        getBoolean(QUESTION_TITLE_SNAP_PREFERENCE_KEY, true)
+    }
     val showTopBarTitle by remember {
         derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset >= topBarTitleThresholdPx
+            questionTitleSnapEnabled &&
+                (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset >= topBarTitleThresholdPx)
         }
     }
     val pageTurnTarget = rememberPageTurnTarget(

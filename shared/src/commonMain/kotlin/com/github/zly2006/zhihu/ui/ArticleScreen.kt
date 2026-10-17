@@ -175,6 +175,13 @@ import kotlin.math.max
 private const val SCROLL_THRESHOLD = 10 // 滑动阈值，单位为dp
 private val ScrollThresholdDp = SCROLL_THRESHOLD.dp
 
+/**
+ * 「标题始终收起」开关。
+ *
+ * 开启后回答/文章顶部的大标题固定为收起态（单行小标题），滚动也不会再展开，给正文让出高度。
+ */
+const val TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY = "titleAlwaysCollapsed"
+
 /** 恢复阅读位置最多等待正文完成布局的时间；超时后按当前可达高度落点。 */
 private const val READING_POSITION_RESTORE_TIMEOUT_MS = 3_000L
 private const val READING_POSITION_RESTORE_POLL_MS = 50L
@@ -212,6 +219,9 @@ fun ArticleScreen(
     val scrollState = rememberScrollState()
     val settings = rememberSettingsStore()
     val isTitleAutoHide by rememberObservedSetting(settings, "titleAutoHide") { getBoolean("titleAutoHide", false) }
+    val isTitleAlwaysCollapsed by rememberObservedSetting(settings, TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY) {
+        getBoolean(TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY, false)
+    }
     val autoHideArticleBottomBar by rememberObservedSetting(settings, "autoHideArticleBottomBar") {
         getBoolean("autoHideArticleBottomBar", false)
     }
@@ -634,6 +644,7 @@ fun ArticleScreen(
                                 }
                             },
                             scrollBehavior = if (scrollStateMaxValue > 0) scrollBehavior else null,
+                            alwaysCollapsed = isTitleAlwaysCollapsed,
                             colors = TopAppBarDefaults.topAppBarColors().copy(
                                 scrolledContainerColor = if (MaterialTheme.colorScheme.surfaceContainer != MaterialTheme.colorScheme.background) {
                                     MaterialTheme.colorScheme.surfaceContainer

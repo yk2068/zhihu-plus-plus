@@ -109,12 +109,29 @@ fun ZhihuTwoRowsTopAppBar(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(),
     scrollBehavior: TopAppBarScrollBehavior? = null,
+    alwaysCollapsed: Boolean = false,
 ) {
     val snapToCollapsedThresholdPx = with(LocalDensity.current) {
         PreferCollapsedSnapDistance.roundToPx().toFloat()
     }
+    val resolvedCollapsedHeight =
+        if (collapsedHeight == Dp.Unspecified || collapsedHeight == Dp.Infinity) {
+            TopAppBarDefaults.MediumAppBarCollapsedHeight
+        } else {
+            collapsedHeight
+        }
+    val resolvedExpandedHeight =
+        if (expandedHeight == Dp.Unspecified || expandedHeight == Dp.Infinity) {
+            if (subtitle != null) {
+                TopAppBarDefaults.MediumFlexibleAppBarWithSubtitleExpandedHeight
+            } else {
+                TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight
+            }
+        } else {
+            expandedHeight
+        }
     TwoRowsTopAppBar(
-        title = { title(true) },
+        title = { title(!alwaysCollapsed) },
         titleTextStyle = MaterialTheme.typography.headlineMedium,
         titleBottomPadding = 0.dp,
         smallTitle = { title(false) },
@@ -127,26 +144,14 @@ fun ZhihuTwoRowsTopAppBar(
         titleHorizontalAlignment = titleHorizontalAlignment,
         navigationIcon = navigationIcon,
         actions = actions,
-        collapsedHeight =
-            if (collapsedHeight == Dp.Unspecified || collapsedHeight == Dp.Infinity) {
-                TopAppBarDefaults.MediumAppBarCollapsedHeight
-            } else {
-                collapsedHeight
-            },
-        expandedHeight =
-            if (expandedHeight == Dp.Unspecified || expandedHeight == Dp.Infinity) {
-                if (subtitle != null) {
-                    TopAppBarDefaults.MediumFlexibleAppBarWithSubtitleExpandedHeight
-                } else {
-                    TopAppBarDefaults.MediumFlexibleAppBarWithoutSubtitleExpandedHeight
-                }
-            } else {
-                expandedHeight
-            },
+        collapsedHeight = resolvedCollapsedHeight,
+        // 始终收起时不留第二行的高度：顶栏只剩收起态那一行，滚动也无法再展开。
+        expandedHeight = if (alwaysCollapsed) resolvedCollapsedHeight else resolvedExpandedHeight,
         windowInsets = windowInsets,
         colors = colors,
         scrollBehavior = scrollBehavior,
         snapToCollapsedThresholdPx = snapToCollapsedThresholdPx,
+        alwaysCollapsed = alwaysCollapsed,
     )
 }
 
@@ -202,6 +207,7 @@ private fun TwoRowsTopAppBar(
     colors: TopAppBarColors,
     scrollBehavior: TopAppBarScrollBehavior?,
     snapToCollapsedThresholdPx: Float,
+    alwaysCollapsed: Boolean,
 ) {
     require(collapsedHeight.isSpecified && collapsedHeight.isFinite) {
         "The collapsedHeight is expected to be specified and finite"
@@ -230,11 +236,14 @@ private fun TwoRowsTopAppBar(
                 content = actions,
             )
         }
-    val topTitleAlpha = { TopTitleAlphaEasing.transform(colorTransitionFraction()) }
-    val bottomTitleAlpha = { 1f - colorTransitionFraction() }
+    // 始终收起时收起态标题恒为可见，第二行（展开态大标题）不再参与。
+    val topTitleAlpha = {
+        if (alwaysCollapsed) 1f else TopTitleAlphaEasing.transform(colorTransitionFraction())
+    }
+    val bottomTitleAlpha = { if (alwaysCollapsed) 0f else 1f - colorTransitionFraction() }
     val hideTopRowSemantics by
-        remember(colorTransitionFraction) {
-            derivedStateOf { colorTransitionFraction() < 0.5f }
+        remember(colorTransitionFraction, alwaysCollapsed) {
+            derivedStateOf { !alwaysCollapsed && colorTransitionFraction() < 0.5f }
         }
     val hideBottomRowSemantics = !hideTopRowSemantics
     val appBarDragModifier =
@@ -292,31 +301,33 @@ private fun TwoRowsTopAppBar(
                 height = collapsedHeight,
                 contentPadding = TopAppBarDefaults.ContentPadding,
             )
-            TopAppBarLayout(
-                modifier =
-                    Modifier
-                        .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal))
-                        .clipToBounds()
-                        .adjustHeightOffsetLimit(scrollBehavior),
-                scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
-                navigationIconContentColor = colors.navigationIconContentColor,
-                titleContentColor = colors.titleContentColor,
-                actionIconContentColor = colors.actionIconContentColor,
-                subtitleContentColor = colors.subtitleContentColor,
-                title = title,
-                titleTextStyle = titleTextStyle,
-                subtitle = subtitle,
-                subtitleTextStyle = subtitleTextStyle,
-                titleAlpha = bottomTitleAlpha,
-                titleVerticalArrangement = Arrangement.Bottom,
-                titleHorizontalAlignment = titleHorizontalAlignment,
-                titleBottomPadding = titleBottomPaddingPx,
-                hideTitleSemantics = hideBottomRowSemantics,
-                navigationIcon = {},
-                actions = {},
-                height = expandedHeight - collapsedHeight,
-                contentPadding = TopAppBarDefaults.ContentPadding,
-            )
+            if (!alwaysCollapsed) {
+                TopAppBarLayout(
+                    modifier =
+                        Modifier
+                            .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal))
+                            .clipToBounds()
+                            .adjustHeightOffsetLimit(scrollBehavior),
+                    scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
+                    navigationIconContentColor = colors.navigationIconContentColor,
+                    titleContentColor = colors.titleContentColor,
+                    actionIconContentColor = colors.actionIconContentColor,
+                    subtitleContentColor = colors.subtitleContentColor,
+                    title = title,
+                    titleTextStyle = titleTextStyle,
+                    subtitle = subtitle,
+                    subtitleTextStyle = subtitleTextStyle,
+                    titleAlpha = bottomTitleAlpha,
+                    titleVerticalArrangement = Arrangement.Bottom,
+                    titleHorizontalAlignment = titleHorizontalAlignment,
+                    titleBottomPadding = titleBottomPaddingPx,
+                    hideTitleSemantics = hideBottomRowSemantics,
+                    navigationIcon = {},
+                    actions = {},
+                    height = expandedHeight - collapsedHeight,
+                    contentPadding = TopAppBarDefaults.ContentPadding,
+                )
+            }
         }
     }
 }

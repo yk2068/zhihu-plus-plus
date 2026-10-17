@@ -62,6 +62,8 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.QUESTION_TITLE_SNAP_PREFERENCE_KEY
+import com.github.zly2006.zhihu.ui.TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
 import com.github.zly2006.zhihu.ui.components.SettingItemGroup
@@ -192,6 +194,24 @@ private val settingsSearchEntries = buildList {
     )
     add(appearanceEntry("appearance.webviewRender", "使用 WebView 显示文章", "切换文章、回答、想法正文渲染方式。", ARTICLE_USE_WEBVIEW_PREFERENCE_KEY))
     add(appearanceEntry("appearance.titleAutoHide", "自动隐藏回答标题", "阅读时自动收起顶部标题。", "titleAutoHide", listOf("标题栏")))
+    add(
+        appearanceEntry(
+            "appearance.titleAlwaysCollapsed",
+            "标题始终收起",
+            "顶部大标题固定为一行收起态，滚动也不再展开。",
+            TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY,
+            listOf("标题", "标题栏", "收起", "大标题", "顶栏"),
+        ),
+    )
+    add(
+        appearanceEntry(
+            "appearance.questionTitleSnap",
+            "问题标题自动吸附",
+            "问题页下划超过 160dp 后把问题标题吸附到顶栏；关闭后顶栏不显示问题标题。",
+            QUESTION_TITLE_SNAP_PREFERENCE_KEY,
+            listOf("标题", "吸附", "问题页", "顶栏"),
+        ),
+    )
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
     add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
     add(appearanceEntry("appearance.pinAnswerDate", "置顶回答日期", "调整回答日期在正文中的位置。", "pinAnswerDate"))
