@@ -62,7 +62,6 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
 import com.github.zly2006.zhihu.ui.ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.ARTICLE_USE_WEBVIEW_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.QUESTION_TITLE_SNAP_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.DISABLE_BOTTOM_SHEET_ROUNDED_CORNERS_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.components.SettingItem
@@ -201,15 +200,6 @@ private val settingsSearchEntries = buildList {
             "顶部大标题固定为一行收起态，滚动也不再展开。",
             TITLE_ALWAYS_COLLAPSED_PREFERENCE_KEY,
             listOf("标题", "标题栏", "收起", "大标题", "顶栏"),
-        ),
-    )
-    add(
-        appearanceEntry(
-            "appearance.questionTitleSnap",
-            "问题标题自动吸附",
-            "问题页下划超过 160dp 后把问题标题吸附到顶栏；关闭后顶栏不显示问题标题。",
-            QUESTION_TITLE_SNAP_PREFERENCE_KEY,
-            listOf("标题", "吸附", "问题页", "顶栏"),
         ),
     )
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))

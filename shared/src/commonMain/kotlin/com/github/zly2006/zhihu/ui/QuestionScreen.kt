@@ -17,15 +17,9 @@
 
 package com.github.zly2006.zhihu.ui
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,7 +65,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -130,13 +123,6 @@ import kotlin.math.roundToInt
 
 const val QUESTION_SCREEN_LIST_TAG = "question_screen_list"
 const val QUESTION_TITLE_TAG = "question_title"
-
-/**
- * 问题页顶部标题自动吸附开关。
- *
- * 开启后，正文下滑超过 160dp 时把问题标题吸附到顶栏；关闭时顶栏始终不显示问题标题。
- */
-const val QUESTION_TITLE_SNAP_PREFERENCE_KEY = "questionTitleSnap"
 const val QUESTION_DETAIL_TOGGLE_TAG = "question_detail_toggle"
 const val QUESTION_DETAIL_CONTENT_TAG = "question_detail_content"
 const val QUESTION_DETAIL_PREVIEW_TAG = "question_detail_preview"
@@ -213,19 +199,6 @@ fun QuestionScreen(
     val questionContentPlainText =
         remember(questionContent) { Ksoup.parse(questionContent).text().trim() }
     val shareText = getShareText(question, title)
-    val topBarTitleThresholdPx = with(LocalDensity.current) { 160.dp.roundToPx() }
-    // 默认开启，与历史行为一致；关闭后顶栏始终不显示问题标题。
-    val questionTitleSnapEnabled by rememberObservedSetting(settings, QUESTION_TITLE_SNAP_PREFERENCE_KEY) {
-        getBoolean(QUESTION_TITLE_SNAP_PREFERENCE_KEY, true)
-    }
-    // 必须带上开关作为 key：derivedStateOf 的 lambda 捕获的是本次组合的 value，
-    // 用无 key 的 remember 会永久沿用第一次读到的值，开关切换后不生效。
-    val showTopBarTitle by remember(questionTitleSnapEnabled) {
-        derivedStateOf {
-            questionTitleSnapEnabled &&
-                (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset >= topBarTitleThresholdPx)
-        }
-    }
     val pageTurnTarget = rememberPageTurnTarget(
         listState = listState,
         enabled = !showComments && !showShareDialog,
@@ -261,7 +234,6 @@ fun QuestionScreen(
         topBar = {
             QuestionTopBar(
                 title = title,
-                showTitle = showTopBarTitle,
                 onNavigateBack = navigator.onNavigateBack,
                 onOpenLog = {
                     try {
@@ -380,7 +352,6 @@ fun QuestionScreen(
 @Composable
 private fun QuestionTopBar(
     title: String,
-    showTitle: Boolean,
     onNavigateBack: () -> Unit,
     onOpenLog: () -> Unit,
     onShare: () -> Unit,
@@ -388,20 +359,11 @@ private fun QuestionTopBar(
 ) {
     TopAppBar(
         title = {
-            AnimatedContent(
-                targetState = showTitle,
-                transitionSpec = {
-                    (fadeIn() + slideInVertically(initialOffsetY = { it / 2 })) togetherWith
-                        (fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }))
-                },
-                label = "question_top_bar_title",
-            ) { shouldShowTitle ->
-                Text(
-                    text = if (shouldShowTitle) title else "问题",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Text(
+                text = title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         },
         navigationIcon = {
             IconButton(onClick = onNavigateBack) {
