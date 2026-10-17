@@ -19,8 +19,6 @@ package com.github.zly2006.zhihu.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,10 +55,8 @@ import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -141,9 +137,7 @@ import com.github.zly2006.zhihu.ui.components.AnswerVerticalOverscroll
 import com.github.zly2006.zhihu.ui.components.AuthorBadge
 import com.github.zly2006.zhihu.ui.components.CollectionDialogComponent
 import com.github.zly2006.zhihu.ui.components.CommentScreenComponent
-import com.github.zly2006.zhihu.ui.components.ContentEndMarker
 import com.github.zly2006.zhihu.ui.components.DEFAULT_ANSWER_SWITCH_SENSITIVITY
-import com.github.zly2006.zhihu.ui.components.DraggableRefreshButton
 import com.github.zly2006.zhihu.ui.components.ExportDialogComponent
 import com.github.zly2006.zhihu.ui.components.MyModalBottomSheet
 import com.github.zly2006.zhihu.ui.components.VerticalReadingProgressBar
@@ -153,9 +147,7 @@ import com.github.zly2006.zhihu.ui.components.normalizedAnswerSwitchSensitivity
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.rememberPreferCollapsedExitUntilCollapsedScrollBehavior
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.ui.subscreens.DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY
-import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_SWITCH_ANSWER
 import com.github.zly2006.zhihu.util.formatCompactCount
 import com.github.zly2006.zhihu.util.smoothGradient
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
@@ -194,7 +186,7 @@ private const val READING_POSITION_SAVE_DEBOUNCE_MS = 400L
  *
  * 页面负责加载知乎回答或专栏文章，展示标题、作者、正文、附件视频、评论入口、分享/复制/朗读/浏览器打开等底部操作，
  * 正文主路径使用 Compose Markdown 渲染。回答页还承载同题回答切换手势和对应转场状态，因此改动时要同时关注
- * `answerSwitchMode`、`buttonSkipAnswer`、`autoHideArticleBottomBar`、`titleAutoHide`、`answerDoubleTapAction` 和
+ * `answerSwitchMode`、`autoHideArticleBottomBar`、`titleAutoHide`、`answerDoubleTapAction` 和
  * `ARTICLE_USE_WEBVIEW_PREFERENCE_KEY`。
  */
 @OptIn(
@@ -236,10 +228,6 @@ fun ArticleScreen(
     val useDuo3ArticleActions by rememberObservedSetting(settings, "duo3_article_actions") {
         getBoolean("duo3_article_actions", false)
     }
-    val buttonSkipAnswer by rememberObservedSetting(settings, "buttonSkipAnswer") { getBoolean("buttonSkipAnswer", true) }
-    val autoHideSkipAnswerButton by rememberObservedSetting(settings, "autoHideSkipAnswerButton") {
-        getBoolean("autoHideSkipAnswerButton", true)
-    }
     var answerDoubleTapAction by rememberObservedSetting(settings, ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY) {
         AnswerDoubleTapAction.fromPreference(
             getString(ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, AnswerDoubleTapAction.Ask.preferenceValue),
@@ -250,9 +238,6 @@ fun ArticleScreen(
     }
     val useTiqianMarkdown by rememberObservedSetting(settings, DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY) {
         getBoolean(DUO3_TIQIAN_MARKDOWN_PREFERENCE_KEY, false)
-    }
-    val pageTurnSwitchAnswer by rememberObservedSetting(settings, PREF_PAGE_TURN_SWITCH_ANSWER) {
-        getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER)
     }
     val readingPositionEnabled by rememberObservedSetting(settings, PREF_READING_POSITION_MEMORY) {
         getBoolean(PREF_READING_POSITION_MEMORY, DEFAULT_READING_POSITION_MEMORY)
@@ -326,10 +311,6 @@ fun ArticleScreen(
         scrollState = scrollState,
         enabled = pageTurnActive,
         maxScrollValue = effectiveScrollMaxValue,
-        onPageUpAtStart = (answerNavigationState::navigateToPrevious)
-            .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
-        onPageDownAtEnd = (answerNavigationState::navigateToNext)
-            .takeIf { article.type == ArticleType.Answer && pageTurnSwitchAnswer },
     )
     val hapticFeedback = LocalHapticFeedback.current
     val readingPlayerOverlayRouteId = articleNavController?.currentBackStackEntry?.id
@@ -1173,7 +1154,6 @@ fun ArticleScreen(
                                                 )
                                             }
                                         }
-                                        ContentEndMarker()
                                         Spacer(modifier = Modifier.height((16 + 36).dp))
                                     },
                                 )
@@ -1257,44 +1237,6 @@ fun ArticleScreen(
                     end = 2.dp,
                 ),
         )
-
-        // 跳转按钮需要压在问题区和回答区之上。
-        if (article.type == ArticleType.Answer && buttonSkipAnswer && !isImmersiveMode) {
-            val isAtTop by remember(scrollState) {
-                derivedStateOf { scrollState.value == 0 }
-            }
-            val showSkipButton = !autoHideSkipAnswerButton || bottomBarState.isScrollingUp || isAtTop
-            val skipButtonAlpha by animateFloatAsState(
-                targetValue = if (showSkipButton) 1f else 0f,
-                animationSpec = tween(200),
-                label = "skipButtonAlpha",
-            )
-            var fabClickCount by remember { mutableIntStateOf(0) }
-            LaunchedEffect(fabClickCount) {
-                if (fabClickCount > 0) {
-                    delay(350)
-                    if (fabClickCount >= 2) {
-                        isImmersiveMode = !isImmersiveMode
-                    } else {
-                        if (showSkipButton) {
-                            answerNavigationState.navigateToNext()
-                        }
-                    }
-                    fabClickCount = 0
-                }
-            }
-            DraggableRefreshButton(
-                modifier = Modifier.graphicsLayer { alpha = skipButtonAlpha },
-                onClick = { fabClickCount++ },
-                preferenceName = "buttonSkipAnswer",
-            ) {
-                if (answerNavigationState.navigatingToNextAnswer) {
-                    CircularProgressIndicator(modifier = Modifier.size(30.dp))
-                } else {
-                    Icon(Icons.Filled.SkipNext, contentDescription = "下一个回答")
-                }
-            }
-        }
     }
 
     // 全屏菜单

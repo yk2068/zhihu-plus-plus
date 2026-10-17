@@ -152,8 +152,6 @@ import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.ReadingCommentOrder
 import com.github.zly2006.zhihu.reading.loadReadingPreferences
 import com.github.zly2006.zhihu.reading.saveReadingPreferences
-import com.github.zly2006.zhihu.ui.components.PageTurnFab
-import com.github.zly2006.zhihu.ui.components.pageTurnContentEndMarker
 import com.github.zly2006.zhihu.ui.components.pageTurnViewportWithGuide
 import com.github.zly2006.zhihu.ui.components.rememberPageTurnTarget
 import com.github.zly2006.zhihu.ui.components.replaceSelection
@@ -447,7 +445,6 @@ fun CommentScreen(
     initialComment: DataHolder.Comment? = null,
     onInitialChildCommentResolved: (CommentModel, DataHolder.Comment) -> Unit = { _, _ -> },
     pageTurnEnabled: Boolean = false,
-    showPageTurnFab: Boolean = false,
 ) {
     val paginationEnvironment = rememberPaginationEnvironment(allowGuestAccess = false)
     val readingSettings = rememberSettingsStore()
@@ -980,10 +977,6 @@ fun CommentScreen(
                                     }
                                 }
 
-                                if (viewModel.isEnd && viewModel.allData.isNotEmpty()) {
-                                    pageTurnContentEndMarker()
-                                }
-
                                 if (viewModel.isLoading && viewModel.allData.isNotEmpty()) {
                                     item(key = "loading_indicator") {
                                         Box(
@@ -1222,11 +1215,6 @@ fun CommentScreen(
                     }
                 }
             }
-        }
-        if (showPageTurnFab) {
-            PageTurnFab(
-                preferenceName = "fabPageTurnComment",
-            )
         }
     }
 }

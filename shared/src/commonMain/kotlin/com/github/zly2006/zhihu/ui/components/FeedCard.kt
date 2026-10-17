@@ -85,6 +85,7 @@ import com.github.zly2006.zhihu.platform.UserMessageDuration
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
 import com.github.zly2006.zhihu.ui.LocalSelectedContentDestination
+import com.github.zly2006.zhihu.ui.subscreens.HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_FONT_SIZE
 import com.github.zly2006.zhihu.ui.subscreens.PREF_LINE_HEIGHT
 import com.github.zly2006.zhihu.util.parseEmphasizedHtmlTextWithTheme
@@ -308,10 +309,13 @@ private fun FeedCardContent(
     val lineHeightPercent = remember { settings.getInt(PREF_LINE_HEIGHT, 160) }
     val navigator = LocalNavigator.current
     // 作者区域单独可点：进作者主页而不是打开这条内容。拿不到作者时保持不可点击，
-    // 让整张卡片继续响应原有的进入内容行为。
-    val openAuthor: (() -> Unit)? = item.authorDestination?.let { destination ->
-        { navigator.onNavigate(destination) }
-    }
+    // 让整张卡片继续响应原有的进入内容行为。开关关闭时同样退化为不可点击。
+    val authorProfileEnabled = settings.getBoolean(HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY, true)
+    val openAuthor: (() -> Unit)? = item.authorDestination
+        ?.takeIf { authorProfileEnabled }
+        ?.let { destination ->
+            { navigator.onNavigate(destination) }
+        }
     val visiblePinImages = pinImages.takeIf { showFeedThumbnail && !item.isFiltered }.orEmpty()
     val sourceLabel = item.feed?.sourceLabel.takeUnless { item.isFiltered }
     if (duo3CardLayout) {

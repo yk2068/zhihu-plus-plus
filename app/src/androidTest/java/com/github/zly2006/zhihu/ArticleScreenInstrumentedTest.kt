@@ -26,7 +26,6 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
@@ -97,11 +96,6 @@ import com.github.zly2006.zhihu.ui.AnswerDoubleTapAction
 import com.github.zly2006.zhihu.ui.ArticleScreen
 import com.github.zly2006.zhihu.ui.PREFERENCE_NAME
 import com.github.zly2006.zhihu.ui.article.ArticleActionsMenu
-import com.github.zly2006.zhihu.ui.components.LocalPageTurnDispatcher
-import com.github.zly2006.zhihu.ui.components.PageTurnCommand
-import com.github.zly2006.zhihu.ui.components.PageTurnDispatcher
-import com.github.zly2006.zhihu.ui.components.PageTurnFab
-import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel
 import com.github.zly2006.zhihu.viewmodel.ZhihuApiEnvironment
 import com.github.zly2006.zhihu.viewmodel.sharedArticleAnswerSwitchState
@@ -138,8 +132,6 @@ class ArticleScreenInstrumentedTest {
             .putBoolean("duo3_article_actions", true)
             .putBoolean("titleAutoHide", true)
             .putBoolean("autoHideArticleBottomBar", true)
-            .putBoolean("buttonSkipAnswer", true)
-            .putBoolean("autoHideSkipAnswerButton", true)
             .putBoolean("pinAnswerDate", true)
             .putBoolean(ARTICLE_USE_WEBVIEW_PREFERENCE_KEY, false)
             .putString("answerDoubleTapAction", AnswerDoubleTapAction.Ask.preferenceValue)
@@ -223,53 +215,6 @@ class ArticleScreenInstrumentedTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithContentDescription("更多选项").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("复制链接").assertIsDisplayed()
-    }
-
-    /**
-     * Contract: https://github.com/zly2006/zhihu-plus-plus/issues/630
-     * Introduced by: https://github.com/zly2006/zhihu-plus-plus/pull/728
-     */
-    @Test
-    fun pageTurnControlsScrollTheArticleAndProduceReviewScreenshot() {
-        composeRule.activity
-            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(PREF_SHOW_PAGE_TURN_FAB, true)
-            .commit()
-        val dispatcher = PageTurnDispatcher()
-        setArticleScreen(dispatcher)
-
-        composeRule.onNodeWithContentDescription("下翻页").assertIsDisplayed()
-        val scrollContainer = composeRule.onNode(
-            SemanticsMatcher("has vertical scroll axis") { node ->
-                node.config.contains(SemanticsProperties.VerticalScrollAxisRange)
-            },
-        )
-        val initialValue = scrollContainer
-            .fetchSemanticsNode()
-            .config[SemanticsProperties.VerticalScrollAxisRange]
-            .value()
-
-        assertTrue(dispatcher.dispatch(PageTurnCommand.PageDown))
-        composeRule.waitUntil(5_000) {
-            scrollContainer
-                .fetchSemanticsNode()
-                .config[SemanticsProperties.VerticalScrollAxisRange]
-                .value() > initialValue
-        }
-
-        val screenshot = File(
-            requireNotNull(composeRule.activity.getExternalFilesDir(null)),
-            "page-turn-article.png",
-        )
-        FileOutputStream(screenshot).use { output ->
-            composeRule.onRoot().captureToImage().asAndroidBitmap().compress(
-                Bitmap.CompressFormat.PNG,
-                100,
-                output,
-            )
-        }
-        assertTrue(screenshot.exists() && screenshot.length() > 0)
     }
 
     /**
@@ -1540,43 +1485,7 @@ class ArticleScreenInstrumentedTest {
         }
     }
 
-    /**
-     * Regression: https://github.com/zly2006/zhihu-plus-plus/issues/477
-     * Fixed by: https://github.com/zly2006/zhihu-plus-plus/pull/480
-     */
-    @Test
-    fun skipAnswerButtonCanBeDraggedBackToRightEdge() {
-        val viewModel = seededAnswerViewModel(ANSWER)
-        composeRule.setScreenContent {
-            Scaffold(
-                modifier = androidx.compose.ui.Modifier
-                    .fillMaxSize(),
-            ) { _ ->
-                ArticleScreen(
-                    article = ANSWER,
-                    viewModel = viewModel,
-                )
-            }
-        }
-
-        val rootWidth = composeRule
-            .onRoot()
-            .fetchSemanticsNode()
-            .boundsInRoot.width
-        val preferences = composeRule.activity.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-        dragSkipAnswerButtonBy(-rootWidth)
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            preferences.getFloat("buttonSkipAnswer-x", Float.NaN) < rootWidth / 3
-        }
-
-        dragSkipAnswerButtonBy(rootWidth)
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            preferences.getFloat("buttonSkipAnswer-x", Float.NaN) > rootWidth / 2
-        }
-        assertTrue(preferences.getFloat("buttonSkipAnswer-x", Float.NaN) > rootWidth / 2)
-    }
-
-    private fun setArticleScreen(pageTurnDispatcher: PageTurnDispatcher? = null) {
+    private fun setArticleScreen() {
         val viewModel = ArticleViewModel(
             article = ARTICLE,
             httpClient = null,
@@ -1601,22 +1510,10 @@ class ArticleScreenInstrumentedTest {
                 modifier = androidx.compose.ui.Modifier
                     .fillMaxSize(),
             ) { _ ->
-                if (pageTurnDispatcher == null) {
-                    ArticleScreen(
-                        article = ARTICLE,
-                        viewModel = viewModel,
-                    )
-                } else {
-                    CompositionLocalProvider(LocalPageTurnDispatcher provides pageTurnDispatcher) {
-                        Box(Modifier.fillMaxSize()) {
-                            ArticleScreen(
-                                article = ARTICLE,
-                                viewModel = viewModel,
-                            )
-                            PageTurnFab(dispatcher = pageTurnDispatcher)
-                        }
-                    }
-                }
+                ArticleScreen(
+                    article = ARTICLE,
+                    viewModel = viewModel,
+                )
             }
         }
     }
@@ -1655,18 +1552,6 @@ class ArticleScreenInstrumentedTest {
             AndroidReadingPlayerBridge.state.value.queue
                 .map(ReadingQueueItem::id),
         )
-    }
-
-    private fun dragSkipAnswerButtonBy(deltaX: Float) {
-        composeRule
-            .onNodeWithContentDescription("下一个回答")
-            .assertIsDisplayed()
-            .performTouchInput {
-                down(center)
-                moveBy(Offset(deltaX, 0f))
-                up()
-            }
-        composeRule.waitForIdle()
     }
 
     private fun issue495ViewModel(): ArticleViewModel {

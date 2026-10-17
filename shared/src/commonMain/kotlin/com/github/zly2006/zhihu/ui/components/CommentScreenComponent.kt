@@ -172,7 +172,6 @@ fun CommentScreenComponent(
                     (content is Article || content is Pin) &&
                         activeChildComment == null &&
                         (authorCommentPolicyAcknowledged || !isZhPlusAuthorContent),
-                showPageTurnFab = content is Pin,
                 onInitialChildCommentResolved = { rootComment, childComment ->
                     pendingChildComment = childComment
                     activeChildComment = rootComment
@@ -206,7 +205,6 @@ fun CommentScreenComponent(
                 listState = childListState,
                 initialComment = pendingChildComment,
                 pageTurnEnabled = childTarget.article is Article || childTarget.article is Pin,
-                showPageTurnFab = childTarget.article is Pin,
             )
         }
     }

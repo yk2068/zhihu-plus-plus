@@ -101,7 +101,6 @@ import com.github.zly2006.zhihu.navigation.OnlineHistory
 import com.github.zly2006.zhihu.navigation.TopLevelDestination
 import com.github.zly2006.zhihu.platform.SettingsStore
 import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
-import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformBottomBarItemLimit
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.platform.rememberUserMessageSink
@@ -154,14 +153,8 @@ const val PREF_FAB_OPACITY = "fabOpacity"
 const val DEFAULT_FAB_OPACITY = 100
 const val PREF_PAGE_TURN_PERCENT = "pageTurnPercent"
 const val DEFAULT_PAGE_TURN_PERCENT = 90
-const val PREF_PAGE_TURN_SWITCH_ANSWER = "pageTurnSwitchAnswer"
-const val DEFAULT_PAGE_TURN_SWITCH_ANSWER = true
-const val PREF_SHOW_PAGE_TURN_FAB = "showPageTurnFab"
 const val PREF_SHOW_PAGE_TURN_GUIDE = "showPageTurnGuide"
 const val DEFAULT_SHOW_PAGE_TURN_GUIDE = false
-const val PREF_SHOW_CONTENT_END_MARKER = "showContentEndMarker"
-const val DEFAULT_SHOW_CONTENT_END_MARKER = false
-const val PREF_VOLUME_KEY_PAGE_TURN = "volumeKeyPageTurn"
 const val APPEARANCE_SETTINGS_SCROLL_TAG = "appearanceSettings.scroll"
 const val APPEARANCE_SETTINGS_START_DESTINATION_TAG = "appearanceSettings.startDestination"
 const val APPEARANCE_SETTINGS_ANSWER_DOUBLE_TAP_TAG = "appearanceSettings.answerDoubleTap"
@@ -185,6 +178,9 @@ const val BOTTOM_BAR_ITEMS_PREFERENCE_KEY = "bottom_bar_items"
 const val BOTTOM_BAR_ITEM_ORDER_PREFERENCE_KEY = "bottom_bar_item_order"
 const val COLLECTION_DIRECT_BROWSE_PREFERENCE_KEY = "collectionDirectBrowse"
 const val LANDSCAPE_LIST_DETAIL_PREFERENCE_KEY = "landscapeListDetail"
+
+/** 主页推荐卡片里点答主头像/昵称是进入答主个人主页（默认）还是不响应。 */
+const val HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY = "homeFeedAuthorOpensProfile"
 private const val BOTTOM_BAR_ITEM_ORDER_SEPARATOR = ","
 internal val contentFontSizeLevels = (50..120 step 5).toList() + (130..200 step 10).toList()
 private val bottomBarSettingItemHeight = 64.dp
@@ -846,7 +842,6 @@ fun AppearanceSettingsScreen(
             }
 
             // ── 回答页 ──────────────────────────────────────────────────────────
-            val buttonSkipAnswer = remember { mutableStateOf(settings.getBoolean("buttonSkipAnswer", true)) }
             SettingItemGroup(
                 title = "回答页",
             ) {
@@ -960,32 +955,6 @@ fun AppearanceSettingsScreen(
                     highlightedKey = settingKey,
                     bringIntoViewRequester = requesterFor("autoHideArticleBottomBar"),
                 )
-
-                SettingItemWithSwitch(
-                    title = { Text("显示跳转下一个回答按钮") },
-                    description = { Text("在回答页面显示可拖动的快速跳转按钮。") },
-                    checked = buttonSkipAnswer.value,
-                    onCheckedChange = {
-                        buttonSkipAnswer.value = it
-                        settings.putBoolean("buttonSkipAnswer", it)
-                    },
-                    settingKey = "buttonSkipAnswer",
-                    highlightedKey = settingKey,
-                    bringIntoViewRequester = requesterFor("buttonSkipAnswer"),
-                )
-
-                val autoHideSkipAnswerButton = remember { mutableStateOf(settings.getBoolean("autoHideSkipAnswerButton", true)) }
-                AnimatedVisibility(buttonSkipAnswer.value) {
-                    SettingItemWithSwitch(
-                        title = { Text("滚动时自动隐藏跳转按钮") },
-                        description = { Text("上划时淡出「下一个回答」按钮，下划时淡入显示。") },
-                        checked = autoHideSkipAnswerButton.value,
-                        onCheckedChange = {
-                            autoHideSkipAnswerButton.value = it
-                            settings.putBoolean("autoHideSkipAnswerButton", it)
-                        },
-                    )
-                }
 
                 val pinAnswerDate = remember { mutableStateOf(settings.getBoolean("pinAnswerDate", false)) }
                 SettingItemWithSwitch(
@@ -1413,132 +1382,26 @@ fun AppearanceSettingsScreen(
                 )
             }
 
-            if (isPageTurnSupported) {
-                SettingItemGroup(
-                    title = "电纸书翻页",
-                    header = {
-                        Text(
-                            "在内容列表、正文、评论区和设置等可滚动页面生效，私聊除外。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        )
-                    },
-                ) {
-                    var volumeKeyPageTurn by remember {
-                        mutableStateOf(settings.getBoolean(PREF_VOLUME_KEY_PAGE_TURN, false))
-                    }
-                    SettingItemWithSwitch(
-                        title = { Text("音量键翻页") },
-                        description = { Text("短按翻页，长按跳到顶部或底部。") },
-                        checked = volumeKeyPageTurn,
-                        onCheckedChange = {
-                            volumeKeyPageTurn = it
-                            settings.putBoolean(PREF_VOLUME_KEY_PAGE_TURN, it)
-                        },
-                        settingKey = PREF_VOLUME_KEY_PAGE_TURN,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_VOLUME_KEY_PAGE_TURN),
-                    )
-
-                    var pageTurnSwitchAnswer by remember {
-                        mutableStateOf(settings.getBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, DEFAULT_PAGE_TURN_SWITCH_ANSWER))
-                    }
-                    SettingItemWithSwitch(
-                        title = { Text("翻页切换回答") },
-                        description = { Text("默认开启。在回答顶部继续上翻进入上一个回答，在底部继续下翻进入下一个回答。") },
-                        checked = pageTurnSwitchAnswer,
-                        onCheckedChange = {
-                            pageTurnSwitchAnswer = it
-                            settings.putBoolean(PREF_PAGE_TURN_SWITCH_ANSWER, it)
-                        },
-                        settingKey = PREF_PAGE_TURN_SWITCH_ANSWER,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_PAGE_TURN_SWITCH_ANSWER),
-                    )
-
-                    var showPageTurnFab by remember {
-                        mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_FAB, false))
-                    }
-                    SettingItemWithSwitch(
-                        title = { Text("显示翻页悬浮按钮") },
-                        description = { Text("只在支持翻页的可滚动页面显示。") },
-                        checked = showPageTurnFab,
-                        onCheckedChange = {
-                            showPageTurnFab = it
-                            settings.putBoolean(PREF_SHOW_PAGE_TURN_FAB, it)
-                        },
-                        settingKey = PREF_SHOW_PAGE_TURN_FAB,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_SHOW_PAGE_TURN_FAB),
-                    )
-
-                    var pageTurnPercent by remember {
-                        mutableIntStateOf(settings.getInt(PREF_PAGE_TURN_PERCENT, DEFAULT_PAGE_TURN_PERCENT))
-                    }
-                    SettingItem(
-                        title = { Text("翻页距离") },
-                        description = { Text("每次滚动可见区域的 $pageTurnPercent%。") },
-                        bottomAction = {
-                            Slider(
-                                value = pageTurnPercent.toFloat(),
-                                onValueChange = {
-                                    pageTurnPercent = (it / 5).roundToInt() * 5
-                                    settings.putInt(PREF_PAGE_TURN_PERCENT, pageTurnPercent)
-                                },
-                                valueRange = 50f..100f,
-                                steps = 9,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            )
-                        },
-                        settingKey = PREF_PAGE_TURN_PERCENT,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_PAGE_TURN_PERCENT),
-                    )
-
-                    var showGuide by remember {
-                        mutableStateOf(settings.getBoolean(PREF_SHOW_PAGE_TURN_GUIDE, DEFAULT_SHOW_PAGE_TURN_GUIDE))
-                    }
-                    SettingItemWithSwitch(
-                        title = { Text("显示翻页位置线") },
-                        description = { Text("翻页后标记上一页与下一页的重叠位置。") },
-                        checked = showGuide,
-                        onCheckedChange = {
-                            showGuide = it
-                            settings.putBoolean(PREF_SHOW_PAGE_TURN_GUIDE, it)
-                        },
-                        settingKey = PREF_SHOW_PAGE_TURN_GUIDE,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_SHOW_PAGE_TURN_GUIDE),
-                    )
-
-                    var showContentEndMarker by remember {
-                        mutableStateOf(
-                            settings.getBoolean(
-                                PREF_SHOW_CONTENT_END_MARKER,
-                                DEFAULT_SHOW_CONTENT_END_MARKER,
-                            ),
-                        )
-                    }
-                    SettingItemWithSwitch(
-                        title = { Text("显示内容结束标记") },
-                        description = { Text("方便电纸书用户确定内容结束了，再向下翻页将跳转下一个内容或无效果。") },
-                        checked = showContentEndMarker,
-                        onCheckedChange = {
-                            showContentEndMarker = it
-                            settings.putBoolean(PREF_SHOW_CONTENT_END_MARKER, it)
-                        },
-                        settingKey = PREF_SHOW_CONTENT_END_MARKER,
-                        highlightedKey = settingKey,
-                        bringIntoViewRequester = requesterFor(PREF_SHOW_CONTENT_END_MARKER),
-                    )
-                }
-            }
-
             // ── 交互 ────────────────────────────────────────────────────────────
             SettingItemGroup(
                 title = "交互",
             ) {
+                val homeFeedAuthorOpensProfile = remember {
+                    mutableStateOf(settings.getBoolean(HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY, true))
+                }
+                SettingItemWithSwitch(
+                    title = { Text("点击推荐卡片答主进入个人主页") },
+                    description = { Text("主页推荐卡片里的答主头像和昵称可点，点了直接进答主个人主页；关闭后这块不再响应点击。") },
+                    checked = homeFeedAuthorOpensProfile.value,
+                    onCheckedChange = {
+                        homeFeedAuthorOpensProfile.value = it
+                        settings.putBoolean(HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY, it)
+                    },
+                    settingKey = HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY,
+                    highlightedKey = settingKey,
+                    bringIntoViewRequester = requesterFor(HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY),
+                )
+
                 var shareActionExpanded by remember { mutableStateOf(false) }
                 val shareActionMode = remember {
                     mutableStateOf(settings.getString("shareActionMode", "ask"))
@@ -1684,7 +1547,6 @@ fun AppearanceSettingsScreen(
                 settings.putBoolean("duo3_article_bar", true)
                 settings.putBoolean("duo3_article_actions", true)
                 settings.putBoolean("showRefreshFab", false)
-                settings.putBoolean("buttonSkipAnswer", false)
                 duo3HomeAccount.value = true
                 duo3CardAppearance.value = true
                 duo3CardLayout.value = true
@@ -1692,7 +1554,6 @@ fun AppearanceSettingsScreen(
                 duo3ArticleActions.value = true
                 // 123duo3 改动中会移除 FAB。
                 showRefreshFab.value = false
-                buttonSkipAnswer.value = false
                 val updatedSelection = if (Home.name !in selectedBottomBarItemKeys.value) {
                     selectedBottomBarItemKeys.value + Account.name
                 } else {
@@ -1982,4 +1843,3 @@ private fun ReadingPositionMemoryLimitDialog(
         },
     )
 }
-

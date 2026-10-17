@@ -9,38 +9,17 @@
 
 package com.github.zly2006.zhihu.ui.components
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,37 +27,20 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
-import com.github.zly2006.zhihu.ui.rememberObservedSetting
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_PAGE_TURN_PERCENT
-import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_CONTENT_END_MARKER
 import com.github.zly2006.zhihu.ui.subscreens.DEFAULT_SHOW_PAGE_TURN_GUIDE
-import com.github.zly2006.zhihu.ui.subscreens.PREF_FAB_OPACITY
 import com.github.zly2006.zhihu.ui.subscreens.PREF_PAGE_TURN_PERCENT
-import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_CONTENT_END_MARKER
-import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_FAB
 import com.github.zly2006.zhihu.ui.subscreens.PREF_SHOW_PAGE_TURN_GUIDE
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
-import kotlin.math.roundToInt
 
 enum class PageTurnCommand {
     PageUp,
@@ -199,168 +161,6 @@ private fun PageTurnTargetRegistrationEffect(
             for (command in target.commands) currentHandler(command)
         }
     }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun DraggablePageTurnButtons(
-    onPageUp: () -> Unit,
-    onPageDown: () -> Unit,
-    onLongPressUp: () -> Unit,
-    onLongPressDown: () -> Unit,
-    modifier: Modifier = Modifier,
-    preferenceName: String = "fabPageTurn",
-) {
-    val density = LocalDensity.current
-    val screenSize = LocalWindowInfo.current.containerSize
-    val settings = rememberSettingsStore()
-    val buttonSize = 56.dp
-    val gap = 4.dp
-    val columnHeight = buttonSize * 2 + gap
-    val defaultY = with(density) { screenSize.height - columnHeight.toPx() - 80.dp.toPx() }
-    var offsetX by remember(preferenceName) { mutableFloatStateOf(settings.getFloat("$preferenceName-x", 0f)) }
-    var offsetY by remember(preferenceName) { mutableFloatStateOf(settings.getFloat("$preferenceName-y", defaultY)) }
-
-    fun clampPositionToViewport() {
-        with(density) {
-            val maxX = (screenSize.width - buttonSize.toPx()).coerceAtLeast(0f)
-            val maxY = (screenSize.height - columnHeight.toPx()).coerceAtLeast(0f)
-            offsetX = offsetX.coerceIn(0f, maxX)
-            offsetY = offsetY.coerceIn(0f, maxY)
-        }
-    }
-
-    LaunchedEffect(screenSize, density, preferenceName) {
-        clampPositionToViewport()
-    }
-    val hapticFeedback = LocalHapticFeedback.current
-    val fabOpacityValue by rememberObservedSetting(settings, PREF_FAB_OPACITY) {
-        getInt(PREF_FAB_OPACITY, DEFAULT_FAB_OPACITY)
-    }
-    val opacityFraction = fabOpacityValue.coerceIn(10, 100) / 100f
-    val fabColor = FloatingActionButtonDefaults.containerColor.copy(alpha = opacityFraction)
-    val iconTint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = opacityFraction)
-    var dragging by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = modifier
-            .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
-            .pointerInput(screenSize, density, preferenceName) {
-                detectDragGestures(
-                    onDragStart = {
-                        dragging = true
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                    },
-                    onDragEnd = {
-                        dragging = false
-                        clampPositionToViewport()
-                        offsetX = if (offsetX < screenSize.width / 2f) {
-                            0f
-                        } else {
-                            with(density) { (screenSize.width - buttonSize.toPx()).coerceAtLeast(0f) }
-                        }
-                        settings.putFloat("$preferenceName-x", offsetX)
-                        settings.putFloat("$preferenceName-y", offsetY)
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        if (dragging) {
-                            offsetX += dragAmount.x
-                            offsetY += dragAmount.y
-                            clampPositionToViewport()
-                        }
-                    },
-                )
-            },
-    ) {
-        PageTurnButton(Icons.Default.KeyboardArrowUp, "上翻页", onPageUp, onLongPressUp, buttonSize, fabColor, iconTint)
-        Spacer(modifier = Modifier.height(gap))
-        PageTurnButton(
-            Icons.Default.KeyboardArrowDown,
-            "下翻页",
-            onPageDown,
-            onLongPressDown,
-            buttonSize,
-            fabColor,
-            iconTint,
-        )
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun PageTurnButton(
-    icon: ImageVector,
-    description: String,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    size: Dp,
-    color: Color,
-    iconTint: Color,
-) {
-    Surface(
-        shape = CircleShape,
-        color = color,
-        modifier = Modifier.size(size).combinedClickable(
-            onClick = onClick,
-            onLongClick = onLongClick,
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() },
-        ),
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-            Icon(icon, contentDescription = description, tint = iconTint)
-        }
-    }
-}
-
-@Composable
-fun PageTurnFab(
-    dispatcher: PageTurnDispatcher = LocalPageTurnDispatcher.current,
-    modifier: Modifier = Modifier,
-    preferenceName: String = "fabPageTurn",
-) {
-    val settings = rememberSettingsStore()
-    val showFab by rememberObservedSetting(settings, PREF_SHOW_PAGE_TURN_FAB) {
-        getBoolean(PREF_SHOW_PAGE_TURN_FAB, false)
-    }
-    if (!isPageTurnSupported || !showFab || !dispatcher.hasActiveTarget) return
-    DraggablePageTurnButtons(
-        onPageUp = { dispatcher.dispatch(PageTurnCommand.PageUp) },
-        onPageDown = { dispatcher.dispatch(PageTurnCommand.PageDown) },
-        onLongPressUp = { dispatcher.dispatch(PageTurnCommand.JumpToTop) },
-        onLongPressDown = { dispatcher.dispatch(PageTurnCommand.JumpToBottom) },
-        modifier = modifier,
-        preferenceName = preferenceName,
-    )
-}
-
-/** A real layout item placed after the final piece of content, so the marker never overlaps it. */
-@Composable
-fun ContentEndMarker(modifier: Modifier = Modifier) {
-    val settings = rememberSettingsStore()
-    val visible by rememberObservedSetting(settings, PREF_SHOW_CONTENT_END_MARKER) {
-        getBoolean(PREF_SHOW_CONTENT_END_MARKER, DEFAULT_SHOW_CONTENT_END_MARKER)
-    }
-    if (!isPageTurnSupported || !visible) return
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "— · —",
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            fontSize = 14.sp,
-        )
-    }
-}
-
-/** Appends [ContentEndMarker] as a real lazy-list item after all loaded content. */
-fun LazyListScope.pageTurnContentEndMarker(key: Any = "page_turn_content_end_marker") {
-    item(key = key) { ContentEndMarker() }
 }
 
 /** Couples a page-turn command handler with the measured viewport used to calculate one-page distance. */

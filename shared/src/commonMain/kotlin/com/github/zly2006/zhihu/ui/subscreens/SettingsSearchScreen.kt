@@ -56,7 +56,6 @@ import com.github.zly2006.zhihu.navigation.NavDestination
 import com.github.zly2006.zhihu.navigation.Notification
 import com.github.zly2006.zhihu.notification.NotificationType
 import com.github.zly2006.zhihu.platform.isAnswerSwipeSupported
-import com.github.zly2006.zhihu.platform.isPageTurnSupported
 import com.github.zly2006.zhihu.platform.platformName
 import com.github.zly2006.zhihu.platform.rememberSettingsStore
 import com.github.zly2006.zhihu.reading.PREF_READING_POSITION_MEMORY
@@ -203,18 +202,18 @@ private val settingsSearchEntries = buildList {
         ),
     )
     add(appearanceEntry("appearance.autoHideArticleBottomBar", "自动隐藏回答底部按钮", "滚动阅读时自动隐藏底部操作栏。", "autoHideArticleBottomBar"))
-    add(appearanceEntry("appearance.buttonSkipAnswer", "显示跳转下一个回答按钮", "在回答页显示快速跳转按钮。", "buttonSkipAnswer", listOf("下一个回答")))
     add(appearanceEntry("appearance.pinAnswerDate", "置顶回答日期", "调整回答日期在正文中的位置。", "pinAnswerDate"))
+    add(
+        appearanceEntry(
+            "appearance.homeFeedAuthorOpensProfile",
+            "点击推荐卡片答主进入个人主页",
+            "主页推荐卡片里点答主头像或昵称直接进答主个人主页。",
+            HOME_FEED_AUTHOR_OPENS_PROFILE_PREFERENCE_KEY,
+            listOf("答主", "作者", "个人主页", "用户详情", "主页", "卡片"),
+        ),
+    )
     if (isAnswerSwipeSupported) {
         add(appearanceEntry("appearance.answerSwitchMode", "回答切换手势", "设置回答之间的上下或左右切换。", "answerSwitchMode", listOf("手势", "上下滑动", "左右滑动", "切换回答")))
-    }
-    if (isPageTurnSupported) {
-        add(appearanceEntry("appearance.pageTurnVolume", "音量键翻页", "在支持翻页的可滚动页面使用物理按键翻页。", PREF_VOLUME_KEY_PAGE_TURN, listOf("电纸书", "翻页")))
-        add(appearanceEntry("appearance.pageTurnSwitchAnswer", "翻页切换回答", "在回答顶部或底部继续翻页，切换到相邻回答。", PREF_PAGE_TURN_SWITCH_ANSWER, listOf("电纸书", "翻页", "上一个回答", "下一个回答")))
-        add(appearanceEntry("appearance.pageTurnFab", "显示翻页悬浮按钮", "在支持翻页的可滚动页面显示上下翻页按钮。", PREF_SHOW_PAGE_TURN_FAB, listOf("电纸书", "翻页")))
-        add(appearanceEntry("appearance.pageTurnDistance", "翻页距离", "设置每次滚动占可见区域的比例。", PREF_PAGE_TURN_PERCENT, listOf("电纸书", "翻页", "重叠")))
-        add(appearanceEntry("appearance.pageTurnGuide", "显示翻页位置线", "标记相邻两页的重叠位置。", PREF_SHOW_PAGE_TURN_GUIDE, listOf("电纸书", "翻页", "引导线")))
-        add(appearanceEntry("appearance.contentEndMarker", "显示内容结束标记", "方便电纸书用户确定内容结束。", PREF_SHOW_CONTENT_END_MARKER, listOf("电纸书", "翻页", "阅读结束", "内容末尾")))
     }
     add(appearanceEntry("appearance.answerDoubleTapAction", "双击回答动作", "设置双击正文后的默认动作。", ANSWER_DOUBLE_TAP_ACTION_PREFERENCE_KEY, listOf("双击")))
     add(
