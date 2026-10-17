@@ -50,6 +50,7 @@ import androidx.compose.material3.TopAppBarState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -130,6 +131,17 @@ fun ZhihuTwoRowsTopAppBar(
         } else {
             expandedHeight
         }
+    // 始终收起时没有展开行，heightOffsetLimit 也就没机会被展开行的 onSizeChanged 计算出来，
+    // 会停在上游 TopAppBarState 的初值（-Float.MAX_VALUE）。这个初值意味着「顶栏还能收缩无穷高度」，
+    // 于是滚动预消费会把手势全部当成顶栏收缩吃掉，表现为整页滑不动，所以这里必须显式归零。
+    LaunchedEffect(alwaysCollapsed, scrollBehavior) {
+        if (alwaysCollapsed) {
+            scrollBehavior?.state?.apply {
+                heightOffsetLimit = 0f
+                heightOffset = 0f
+            }
+        }
+    }
     TwoRowsTopAppBar(
         title = { title(!alwaysCollapsed) },
         titleTextStyle = MaterialTheme.typography.headlineMedium,

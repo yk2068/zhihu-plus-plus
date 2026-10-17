@@ -218,7 +218,9 @@ fun QuestionScreen(
     val questionTitleSnapEnabled by rememberObservedSetting(settings, QUESTION_TITLE_SNAP_PREFERENCE_KEY) {
         getBoolean(QUESTION_TITLE_SNAP_PREFERENCE_KEY, true)
     }
-    val showTopBarTitle by remember {
+    // 必须带上开关作为 key：derivedStateOf 的 lambda 捕获的是本次组合的 value，
+    // 用无 key 的 remember 会永久沿用第一次读到的值，开关切换后不生效。
+    val showTopBarTitle by remember(questionTitleSnapEnabled) {
         derivedStateOf {
             questionTitleSnapEnabled &&
                 (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset >= topBarTitleThresholdPx)
