@@ -46,6 +46,7 @@ import com.github.zly2006.zhihu.ui.ArticleAnswerTransitionDirection
 import com.github.zly2006.zhihu.util.Log
 import com.github.zly2006.zhihu.util.ZhihuCredentialRefresher
 import com.github.zly2006.zhihu.util.signZhihuFetchRequest
+import com.github.zly2006.zhihu.util.toUserFacingMessage
 import com.github.zly2006.zhihu.viewmodel.ArticleViewModel.CachedAnswerContent
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
 import io.ktor.client.HttpClient
@@ -182,7 +183,7 @@ abstract class PaginationViewModel<T : Any>(
 
     protected fun errorHandle(e: Exception) {
         if (e !is CancellationException) {
-            errorMessage = e.message
+            errorMessage = e.toUserFacingMessage()
             isLoading = false
         }
     }

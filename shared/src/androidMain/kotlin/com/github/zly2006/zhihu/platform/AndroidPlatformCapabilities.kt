@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
@@ -242,14 +243,38 @@ fun androidSettingsStore(context: Context): SettingsStore {
     }
 }
 
+/**
+ * 同一条提示在短时间内只弹一次。
+ *
+ * 列表加载失败时，环境层（handleFetchFailure）和页面层（errorMessage）会各弹一次，
+ * 内容还完全一样，用户看到的就是接连两个重复提示；网络抖动时更是连成一片。
+ */
+private class ToastDedupe {
+    private var lastMessage: String? = null
+    private var lastShownAt: Long = 0L
+
+    @Synchronized
+    fun shouldShow(message: String): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        if (message == lastMessage && now - lastShownAt < TOAST_DEDUPE_WINDOW_MS) return false
+        lastMessage = message
+        lastShownAt = now
+        return true
+    }
+}
+
+private const val TOAST_DEDUPE_WINDOW_MS = 3000L
+
 fun androidUserMessageSink(context: Context): UserMessageSink {
     val appContext = context.applicationContext
     val mainHandler = Handler(Looper.getMainLooper())
+    val dedupe = ToastDedupe()
 
     fun showToast(
         message: String,
         duration: Int,
     ) {
+        if (!dedupe.shouldShow(message)) return
         if (Looper.myLooper() == Looper.getMainLooper()) {
             Toast.makeText(appContext, message, duration).show()
         } else {

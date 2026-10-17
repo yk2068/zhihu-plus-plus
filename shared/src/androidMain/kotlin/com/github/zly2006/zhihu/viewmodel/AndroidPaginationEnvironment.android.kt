@@ -41,6 +41,7 @@ import com.github.zly2006.zhihu.account.androidZhihuAccountStore
 import com.github.zly2006.zhihu.data.AIGC_MARKING_ENABLED_PREFERENCE_KEY
 import com.github.zly2006.zhihu.data.AccountData
 import com.github.zly2006.zhihu.data.AigcVoteVoter
+import com.github.zly2006.zhihu.data.ContentDetailCache
 import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
@@ -65,6 +66,7 @@ import com.github.zly2006.zhihu.util.buildOfflineArticleExportHtml
 import com.github.zly2006.zhihu.util.clipboardManager
 import com.github.zly2006.zhihu.util.exportCollectionItemsToZip
 import com.github.zly2006.zhihu.util.saveBitmapToGallery
+import com.github.zly2006.zhihu.util.toUserFacingMessage
 import com.github.zly2006.zhihu.viewmodel.QUALITY_FILTER_MODE_PREFERENCE_KEY
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.filter.BlockedKeywordService
@@ -79,10 +81,9 @@ import com.github.zly2006.zhihu.viewmodel.filter.androidKeywordSemanticMatcher
 import com.github.zly2006.zhihu.viewmodel.filter.contentFilterSettings
 import com.github.zly2006.zhihu.viewmodel.filter.getContentFilterDatabase
 import com.github.zly2006.zhihu.viewmodel.local.LocalRecommendationEngine
+import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import com.github.zly2006.zhihu.viewmodel.local.buildLocalRecommendationEngine
 import com.github.zly2006.zhihu.viewmodel.local.getLocalContentDatabase
-import com.github.zly2006.zhihu.data.ContentDetailCache
-import com.github.zly2006.zhihu.viewmodel.local.RoomContentDetailDiskCache
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.UserAgent
@@ -240,12 +241,12 @@ open class SharedAndroidPaginationEnvironment(
             showDebugErrorDialog(error)
         }
         Log.e(tag, "Failed to fetch feeds", error)
-        userMessageSink.showShortMessage("加载失败: ${error.message}")
+        userMessageSink.showShortMessage(error.toUserFacingMessage())
     }
 
     override suspend fun handleMobileHomeFeedFailure(error: Exception) {
         Log.e("AndroidHomeFeedViewModel", "Failed to fetch feeds", error)
-        userMessageSink.showShortMessage("安卓端推荐加载失败: ${error.message}")
+        userMessageSink.showShortMessage(error.toUserFacingMessage())
     }
 
     override fun feedDisplaySettings(): FeedDisplaySettings = FeedDisplaySettings(
