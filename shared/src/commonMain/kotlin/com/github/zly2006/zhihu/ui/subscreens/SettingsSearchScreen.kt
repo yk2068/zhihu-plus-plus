@@ -262,6 +262,7 @@ private val settingsSearchEntries = buildList {
     add(recommendEntry("recommend.qualityFilterMode", "质量屏蔽", "选择不屏蔽、显示屏蔽规则或直接隐藏低质量内容。", QUALITY_FILTER_MODE_PREFERENCE_KEY, listOf("低质量", "屏蔽规则", "隐藏")))
     add(recommendEntry("recommend.enableContentFilter", "启用智能内容过滤", "过滤重复出现但未点击内容。", "enableContentFilter"))
     add(recommendEntry("recommend.filterFollowedUserContent", "过滤已关注用户内容", "控制是否过滤已关注用户的内容。", "filterFollowedUserContent"))
+    add(recommendEntry("recommend.feedDetailConcurrency", "详情并发查询数", "过滤首页推荐时同时拉取多少条内容详情，0 表示不限制。", "feedDetailConcurrency", listOf("并发", "连接数", "加载速度")))
     add(recommendEntry("recommend.enableKeywordBlocking", "启用关键词屏蔽", "按关键词过滤内容。", "enableKeywordBlocking", listOf("关键词", "屏蔽词")))
     add(recommendEntry("recommend.enableUserBlocking", "启用用户屏蔽", "按用户过滤内容。", "enableUserBlocking", listOf("作者屏蔽", "屏蔽用户")))
     add(recommendEntry("recommend.enableTopicBlocking", "启用主题屏蔽", "按命中主题过滤内容。", "enableTopicBlocking", listOf("话题屏蔽", "屏蔽话题")))

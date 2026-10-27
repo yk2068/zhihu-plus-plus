@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -59,6 +60,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -383,6 +385,57 @@ fun ContentFilterSettingsScreen(
                     settingKey = "filterFollowedUserContent",
                     highlightedKey = highlightedSetting,
                 )
+
+                // 过滤一页推荐时会对每条内容并发拉详情；给个上限，避免一次开几十个连接。
+                val detailConcurrency = remember { mutableStateOf(settings.getInt("feedDetailConcurrency", 0)) }
+                var showDetailConcurrencyDialog by remember { mutableStateOf(false) }
+                SettingItem(
+                    modifier = Modifier.testTag("contentFilterSettings:feedDetailConcurrency"),
+                    title = { Text("详情并发查询数") },
+                    description = {
+                        Text("过滤一页推荐时同时拉取多少条内容详情。0 表示不限制（全部并发）；网络或接口容易限速时调小。")
+                    },
+                    settingKey = "feedDetailConcurrency",
+                    highlightedKey = highlightedSetting,
+                    endAction = {
+                        Text(
+                            text = detailConcurrency.value.let { if (it <= 0) "不限" else it.toString() },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    },
+                    onClick = { showDetailConcurrencyDialog = true },
+                )
+                if (showDetailConcurrencyDialog) {
+                    var input by remember { mutableStateOf(detailConcurrency.value.toString()) }
+                    AlertDialog(
+                        onDismissRequest = { showDetailConcurrencyDialog = false },
+                        title = { Text("详情并发查询数") },
+                        text = {
+                            Column {
+                                Text("同时拉取的详情条数，0 表示不限制。")
+                                OutlinedTextField(
+                                    value = input,
+                                    onValueChange = { input = it },
+                                    label = { Text("并发数") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                input.toIntOrNull()?.takeIf { it in 0..32 }?.let { value ->
+                                    detailConcurrency.value = value
+                                    settings.putInt("feedDetailConcurrency", value)
+                                    showDetailConcurrencyDialog = false
+                                } ?: userMessages.showMessage("请输入 0 到 32 之间的整数")
+                            }) { Text("确定") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDetailConcurrencyDialog = false }) { Text("取消") }
+                        },
+                    )
+                }
             }
 
             SettingItemGroup {
