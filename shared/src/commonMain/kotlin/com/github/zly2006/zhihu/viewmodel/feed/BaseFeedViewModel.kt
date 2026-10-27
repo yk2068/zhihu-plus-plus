@@ -53,6 +53,16 @@ abstract class BaseFeedViewModel : PaginationViewModel<Feed>(typeOf<Feed>()) {
     var displayItems = mutableStateListOf<FeedDisplayItem>()
     internal var latestLoadedDisplayItems = mutableStateOf<List<FeedDisplayItem>>(emptyList())
     internal var completedPageCount by mutableIntStateOf(0)
+
+    /** 上一页实际返回的条目数，用来推算并发预取时下一页的游标步长。 */
+    internal var lastPageSize: Int = 0
+
+    /**
+     * 本轮并发取几页；为空时用设置里的值。
+     *
+     * 混合推荐把设置里的总数拆给安卓端和网页端两个来源，避免两边各取 N 页、实际翻倍。
+     */
+    internal var pageFetchConcurrency: Int? = null
     var isPullToRefresh by mutableStateOf(false)
         protected set
 

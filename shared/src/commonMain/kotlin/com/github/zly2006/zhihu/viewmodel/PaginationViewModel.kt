@@ -533,6 +533,8 @@ data class FeedDisplaySettings(
     val qualityFilterMode: QualityFilterMode = QualityFilterMode.RULES,
     val qualityFilter: QualityFilterSettings = QualityFilterSettings(),
     val reverseBlock: Boolean = false,
+    /** 首页推荐每轮并发拉取的推荐页数；1 表示老的串行取一页。 */
+    val fetchConcurrency: Int = 3,
 )
 
 enum class QualityFilterMode {

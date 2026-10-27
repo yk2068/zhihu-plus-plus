@@ -25,6 +25,7 @@ import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.ZhihuJson
 import com.github.zly2006.zhihu.data.target
+import com.github.zly2006.zhihu.data.ZhihuPaging
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -32,11 +33,14 @@ import com.github.zly2006.zhihu.navigation.Pin
 import com.github.zly2006.zhihu.navigation.resolveContent
 import com.github.zly2006.zhihu.util.jsonObject
 import com.github.zly2006.zhihu.viewmodel.ContentInteractionEnvironment
+import com.github.zly2006.zhihu.viewmodel.FeedDisplaySettings
 import com.github.zly2006.zhihu.viewmodel.HomeFeedFilterResult
 import com.github.zly2006.zhihu.viewmodel.PaginationEnvironment
 import com.github.zly2006.zhihu.viewmodel.QualityFilterMode
 import com.github.zly2006.zhihu.viewmodel.feed.BaseFeedViewModel
 import com.github.zly2006.zhihu.viewmodel.feed.HomeFeedInteractionViewModel
+import com.github.zly2006.zhihu.viewmodel.feed.RECOMMEND_PAGE_SIZE_FALLBACK
+import com.github.zly2006.zhihu.viewmodel.feed.advanceRecommendCursor
 import com.github.zly2006.zhihu.viewmodel.feed.replaceHomeFeedItemsWithFilteredResult
 import com.github.zly2006.zhihu.viewmodel.postSigned
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -48,6 +52,9 @@ import io.ktor.http.decodeURLPart
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -66,77 +73,70 @@ class AndroidHomeFeedViewModel :
         get() = "https://api.zhihu.com/topstory/recommend"
 
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        val displaySettings = environment.feedDisplaySettings()
+        val concurrency = (pageFetchConcurrency ?: displaySettings.fetchConcurrency).coerceAtLeast(1)
+        val baseUrl = lastPaging?.next ?: initialUrl
         try {
-            val response = environment.mobileHomeFeedHttpClient().get(lastPaging?.next ?: initialUrl)
-            if (response.status.isSuccess()) {
-                val jojo = response.jsonObject()
-                val data = jojo["data"]?.jsonArray ?: throw IllegalStateException("No data found in response")
-
-                // 收集所有待显示的项目
-                val itemsToDisplay = mutableListOf<FeedDisplayItem>()
-                val displaySettings = environment.feedDisplaySettings()
-
-                data
-                    .map { it.jsonObject }
-                    .forEach { card ->
+            // 推荐流的游标是 after_id/end_offset 的偏移，同一次会话里可以往前推，
+            // 因此这里把后面几页的请求一起并发发出去，不用等上一页返回才知道下一页地址。
+            val pages = coroutineScope {
+                (0 until concurrency).map { index ->
+                    async {
+                        val url = advanceRecommendCursor(
+                            baseUrl,
+                            index * (lastPageSize.takeIf { it > 0 } ?: RECOMMEND_PAGE_SIZE_FALLBACK),
+                        )
                         try {
-                            val displayItem = parseMobileHomeFeedDisplayItem(card) ?: return@forEach
-                            itemsToDisplay.add(displayItem)
+                            fetchPage(environment, url, displaySettings)
                         } catch (e: Exception) {
-                            environment.logDecodeFailure("AndroidHomeFeedViewModel", card, e)
+                            // 并发多取的页失败就放弃这一页；首页失败仍按原来的方式抛出去。
+                            if (e is CancellationException || index == 0) throw e
+                            null
                         }
                     }
+                }.awaitAll()
+            }.filterNotNull()
+            if (pages.isEmpty()) {
+                throw IllegalStateException("No data found in response")
+            }
 
-                // 手机版推荐卡片由本方法直接构造，不经过 processResponse，因此质量过滤在这里单独执行。
-                // 缺失这一步会导致「手机版推荐」下赞数/屏蔽视频等规则完全不生效。
-                val qualityFilteredItems = if (displaySettings.qualityFilterMode == QualityFilterMode.OFF) {
-                    itemsToDisplay
-                } else {
-                    itemsToDisplay.mapNotNull { item ->
-                        val feed = item.feed ?: return@mapNotNull item
-                        val filtered = createDisplayItem(environment, feed)
-                        // 保留手机版解析出的展示字段（标题/摘要/详情来自卡片本身），只接管过滤结果。
-                        if (filtered.isQualityFiltered) filtered else item
-                    }
-                }
-
-                // 前台先做本地已读过滤，再立即展示；HIDE 模式下由基类丢弃命中条目。
-                val reverseBlock = displaySettings.reverseBlock
-                val foregroundItems = environment.applyForegroundHomeFeedFilter(qualityFilteredItems)
-                if (!reverseBlock) {
-                    withContext(Dispatchers.Main) {
+            // 前台条目先按页顺序放进列表：这一步不走网络，内容能立刻出现。
+            val reverseBlock = displaySettings.reverseBlock
+            if (!reverseBlock) {
+                withContext(Dispatchers.Main) {
+                    pages.forEach { page ->
                         addDisplayItems(
-                            foregroundItems,
+                            page.foreground,
                             dropQualityFiltered = displaySettings.qualityFilterMode == QualityFilterMode.HIDE,
                         )
                     }
                 }
+            }
 
-                val filteredItems = environment.applyBackgroundHomeFeedFilter(foregroundItems)
-                if (reverseBlock) {
-                    addDisplayItems(filteredItems)
-                }
+            // 游标推进到这批页之后，下一次加载不必等过滤跑完就能继续取数据。
+            // 用最后一页给出的游标；某一页没带 paging 时保留原游标，避免把推荐流重置回开头。
+            pages.mapNotNull { it.paging }.lastOrNull()?.let { lastPaging = it }
+            lastPageSize = pages.last().size
 
-                val filterResult = HomeFeedFilterResult(
-                    foregroundItems = foregroundItems,
-                    filteredItems = filteredItems,
-                    reverseBlock = reverseBlock,
-                )
-
-                // 移除被过滤的条目，并更新已保留条目的 raw 内容。
-                // HIDE 模式下被丢弃的条目不能在这里被重新写回。
-                withContext(Dispatchers.Main) {
-                    displayItems.replaceHomeFeedItemsWithFilteredResult(
-                        filterResult,
-                        dropQualityFiltered = displaySettings.qualityFilterMode == QualityFilterMode.HIDE,
+            // 后台过滤按页异步跑，不阻塞取下一页。
+            pages.forEach { page ->
+                viewModelScope.launch(Dispatchers.Default) {
+                    val filteredItems = environment.applyBackgroundHomeFeedFilter(page.foreground)
+                    if (reverseBlock) {
+                        withContext(Dispatchers.Main) { addDisplayItems(filteredItems) }
+                    }
+                    val filterResult = HomeFeedFilterResult(
+                        foregroundItems = page.foreground,
+                        filteredItems = filteredItems,
+                        reverseBlock = reverseBlock,
                     )
-                    latestLoadedDisplayItems.value = filterResult.filteredItems
-                }
-
-                lastPaging = if ("paging" in jojo) {
-                    ZhihuJson.decodeJson(jojo["paging"]!!)
-                } else {
-                    null
+                    withContext(Dispatchers.Main) {
+                        displayItems.replaceHomeFeedItemsWithFilteredResult(
+                            filterResult,
+                            dropQualityFiltered = displaySettings.qualityFilterMode == QualityFilterMode.HIDE,
+                        )
+                        latestLoadedDisplayItems.value = filteredItems
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -148,6 +148,54 @@ class AndroidHomeFeedViewModel :
             isLoading = false
         }
     }
+
+    private suspend fun fetchPage(
+        environment: PaginationEnvironment,
+        url: String,
+        displaySettings: FeedDisplaySettings,
+    ): AndroidRecommendPage? {
+        val response = environment.mobileHomeFeedHttpClient().get(url)
+        if (!response.status.isSuccess()) return null
+        val jojo = response.jsonObject()
+        val data = jojo["data"]?.jsonArray ?: return null
+
+        // 收集所有待显示的项目
+        val itemsToDisplay = mutableListOf<FeedDisplayItem>()
+        data
+            .map { it.jsonObject }
+            .forEach { card ->
+                try {
+                    parseMobileHomeFeedDisplayItem(card)?.let(itemsToDisplay::add)
+                } catch (e: Exception) {
+                    environment.logDecodeFailure("AndroidHomeFeedViewModel", card, e)
+                }
+            }
+
+        // 手机版推荐卡片由本方法直接构造，不经过 processResponse，因此质量过滤在这里单独执行。
+        // 缺失这一步会导致「手机版推荐」下赞数/屏蔽视频等规则完全不生效。
+        val qualityFilteredItems = if (displaySettings.qualityFilterMode == QualityFilterMode.OFF) {
+            itemsToDisplay
+        } else {
+            itemsToDisplay.mapNotNull { item ->
+                val feed = item.feed ?: return@mapNotNull item
+                val filtered = createDisplayItem(environment, feed)
+                // 保留手机版解析出的展示字段（标题/摘要/详情来自卡片本身），只接管过滤结果。
+                if (filtered.isQualityFiltered) filtered else item
+            }
+        }
+
+        return AndroidRecommendPage(
+            foreground = environment.applyForegroundHomeFeedFilter(qualityFilteredItems),
+            paging = if ("paging" in jojo) ZhihuJson.decodeJson(jojo["paging"]!!) else null,
+            size = itemsToDisplay.size,
+        )
+    }
+
+    private class AndroidRecommendPage(
+        val foreground: List<FeedDisplayItem>,
+        val paging: ZhihuPaging?,
+        val size: Int,
+    )
 
     override suspend fun recordContentInteraction(environment: ContentInteractionEnvironment, feed: Feed) {
         // Android 版本暂不记录交互

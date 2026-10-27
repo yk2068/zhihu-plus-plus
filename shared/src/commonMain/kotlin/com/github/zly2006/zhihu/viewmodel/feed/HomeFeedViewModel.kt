@@ -22,6 +22,7 @@ import com.github.zly2006.zhihu.data.DataHolder
 import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.ZhihuJson
+import com.github.zly2006.zhihu.data.ZhihuPaging
 import com.github.zly2006.zhihu.data.flattenFeeds
 import com.github.zly2006.zhihu.data.navDestination
 import com.github.zly2006.zhihu.data.questionAuthor
@@ -44,6 +45,9 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -166,8 +170,70 @@ class HomeFeedViewModel :
     }
 
     public override suspend fun fetchFeeds(environment: PaginationEnvironment) {
-        markItemsAsTouched(environment)
-        super.fetchFeeds(environment)
+        // touch 上报只是行为信号，和取数据没有先后依赖，并发发出，省掉一个来回的等待。
+        viewModelScope.launch(Dispatchers.Default) { markItemsAsTouched(environment) }
+
+        val concurrency = (pageFetchConcurrency ?: environment.feedDisplaySettings().fetchConcurrency)
+            .coerceAtLeast(1)
+        if (concurrency <= 1) {
+            return super.fetchFeeds(environment)
+        }
+
+        try {
+            // 游标是 after_id/end_offset 偏移，同一 session_token 下可以直接往前推，
+            // 于是把后面几页一起并发请求，而不是等上一页返回后再取下一页。
+            val baseUrl = resolvePageUrl()
+            val pages = coroutineScope {
+                (0 until concurrency).map { index ->
+                    async {
+                        val url = advanceRecommendCursor(
+                            baseUrl,
+                            index * (lastPageSize.takeIf { it > 0 } ?: RECOMMEND_PAGE_SIZE_FALLBACK),
+                        )
+                        try {
+                            fetchPage(environment, url)
+                        } catch (e: Exception) {
+                            // 并发多取的页失败就放弃这一页；首页失败仍按原来的方式抛出去。
+                            if (e is CancellationException || index == 0) throw e
+                            null
+                        }
+                    }
+                }.awaitAll()
+            }.filterNotNull()
+            if (pages.isEmpty()) {
+                throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no $.data"))
+            }
+            pages.forEach { page -> processResponse(environment, page.data, page.raw) }
+            pages.mapNotNull { it.paging }.lastOrNull()?.let { lastPaging = it }
+            lastPageSize = pages.last().data.size
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            environment.handleFetchFailure(this::class.simpleName, e)
+            errorHandle(e)
+        } finally {
+            isLoading = false
+        }
+    }
+
+    private class WebRecommendPage(
+        val data: List<Feed>,
+        val raw: JsonArray,
+        val paging: ZhihuPaging?,
+    )
+
+    private suspend fun fetchPage(
+        environment: PaginationEnvironment,
+        url: String,
+    ): WebRecommendPage? {
+        @Suppress("HttpUrlsUsage")
+        val json = environment.fetchJson(url.replace("http://", "https://"), include) ?: return null
+        val raw = json["data"] as? JsonArray ?: return null
+        return WebRecommendPage(
+            data = decodePage(environment, raw),
+            raw = raw,
+            paging = if ("paging" in json) ZhihuJson.decodeJson<ZhihuPaging>(json["paging"]!!) else null,
+        )
     }
 
     @OptIn(DelicateCoroutinesApi::class)

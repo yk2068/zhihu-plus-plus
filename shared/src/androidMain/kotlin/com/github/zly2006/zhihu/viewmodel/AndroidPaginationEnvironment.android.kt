@@ -244,6 +244,7 @@ open class SharedAndroidPaginationEnvironment(
             blockPin = settingsStore.getBoolean(BLOCK_PIN_PREFERENCE_KEY, false),
         ),
         reverseBlock = settingsStore.getBoolean("reverseBlock", false),
+        fetchConcurrency = settingsStore.getInt("feedFetchConcurrency", 3).coerceIn(1, 6),
     )
 
     override fun localHistory(): List<NavDestination> = HistoryStorage(context).history

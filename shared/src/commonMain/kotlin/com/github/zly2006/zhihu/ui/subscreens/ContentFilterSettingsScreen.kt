@@ -386,37 +386,38 @@ fun ContentFilterSettingsScreen(
                     highlightedKey = highlightedSetting,
                 )
 
-                // 过滤一页推荐时会对每条内容并发拉详情；给个上限，避免一次开几十个连接。
-                val detailConcurrency = remember { mutableStateOf(settings.getInt("feedDetailConcurrency", 0)) }
-                var showDetailConcurrencyDialog by remember { mutableStateOf(false) }
+                // 推荐流的游标可以往前推，所以首屏可以一次并发拉好几页原始推荐数据，
+                // 不必等上一页过滤完再取下一页。
+                val fetchConcurrency = remember { mutableStateOf(settings.getInt("feedFetchConcurrency", 3)) }
+                var showFetchConcurrencyDialog by remember { mutableStateOf(false) }
                 SettingItem(
-                    modifier = Modifier.testTag("contentFilterSettings:feedDetailConcurrency"),
-                    title = { Text("详情并发查询数") },
+                    modifier = Modifier.testTag("contentFilterSettings:feedFetchConcurrency"),
+                    title = { Text("推荐并发获取页数") },
                     description = {
-                        Text("过滤一页推荐时同时拉取多少条内容详情。0 表示不限制（全部并发）；网络或接口容易限速时调小。")
+                        Text("每次加载同时向知乎请求几页推荐（每页 6~10 条）。调大能更快凑够过滤后的首屏内容，调小可以降低被限速的概率。")
                     },
-                    settingKey = "feedDetailConcurrency",
+                    settingKey = "feedFetchConcurrency",
                     highlightedKey = highlightedSetting,
                     endAction = {
                         Text(
-                            text = detailConcurrency.value.let { if (it <= 0) "不限" else it.toString() },
+                            text = fetchConcurrency.value.toString(),
                             modifier = Modifier.padding(horizontal = 16.dp),
                         )
                     },
-                    onClick = { showDetailConcurrencyDialog = true },
+                    onClick = { showFetchConcurrencyDialog = true },
                 )
-                if (showDetailConcurrencyDialog) {
-                    var input by remember { mutableStateOf(detailConcurrency.value.toString()) }
+                if (showFetchConcurrencyDialog) {
+                    var input by remember { mutableStateOf(fetchConcurrency.value.toString()) }
                     AlertDialog(
-                        onDismissRequest = { showDetailConcurrencyDialog = false },
-                        title = { Text("详情并发查询数") },
+                        onDismissRequest = { showFetchConcurrencyDialog = false },
+                        title = { Text("推荐并发获取页数") },
                         text = {
                             Column {
-                                Text("同时拉取的详情条数，0 表示不限制。")
+                                Text("同时请求的推荐页数，1 表示按页串行获取。")
                                 OutlinedTextField(
                                     value = input,
                                     onValueChange = { input = it },
-                                    label = { Text("并发数") },
+                                    label = { Text("页数") },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 )
@@ -424,15 +425,15 @@ fun ContentFilterSettingsScreen(
                         },
                         confirmButton = {
                             TextButton(onClick = {
-                                input.toIntOrNull()?.takeIf { it in 0..32 }?.let { value ->
-                                    detailConcurrency.value = value
-                                    settings.putInt("feedDetailConcurrency", value)
-                                    showDetailConcurrencyDialog = false
-                                } ?: userMessages.showMessage("请输入 0 到 32 之间的整数")
+                                input.toIntOrNull()?.takeIf { it in 1..6 }?.let { value ->
+                                    fetchConcurrency.value = value
+                                    settings.putInt("feedFetchConcurrency", value)
+                                    showFetchConcurrencyDialog = false
+                                } ?: userMessages.showMessage("请输入 1 到 6 之间的整数")
                             }) { Text("确定") }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showDetailConcurrencyDialog = false }) { Text("取消") }
+                            TextButton(onClick = { showFetchConcurrencyDialog = false }) { Text("取消") }
                         },
                     )
                 }

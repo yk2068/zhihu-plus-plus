@@ -33,8 +33,6 @@ import com.github.zly2006.zhihu.util.Log
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.json.Json
 
 class ForegroundReadFilterPipeline(
@@ -238,20 +236,14 @@ class FeedDisplayFilterPipeline(
             emptyList<FeedDisplayItem>() to items
         }
 
-        // 详情拉取的并发上限：0（默认）表示不限，一页内多少条 Article/Pin 就同时建多少连接，
-        // 让网络等待尽量重叠；设置里给了上限就用信号量限流，避免一页几十条连接被限速。
-        val detailSemaphore = settings.detailConcurrency
-            .takeIf { it > 0 }
-            ?.let { Semaphore(it) }
-
         val itemToFilterableMap = coroutineScope {
             otherItems
                 .map { item ->
                     async {
                         val identity = item.resolveContentIdentity()
-                        val rawContent = detailSemaphore
-                            ?.withPermit { resolveRawContent(item) }
-                            ?: resolveRawContent(item)
+                        // 详情拉取保持全部并发：一页内多少条 Article/Pin 就同时建多少连接，
+                        // 让网络等待尽量重叠，避免串行化把整页加载拖慢。
+                        val rawContent = resolveRawContent(item)
 
                         if (rawContent is DataHolder.DummyContent) {
                             Log.w("ContentFilterExtensions", "Failed to fetch content details for item '${item.title}'. Using dummy content for filtering.")
@@ -504,8 +496,6 @@ data class FeedFilterSettings(
     val enableUserBlocking: Boolean = true,
     val enableTopicBlocking: Boolean = true,
     val topicBlockingThreshold: Int = 1,
-    /** 过滤时同时拉取的详情条数上限，0 表示不限制（全部并发）。 */
-    val detailConcurrency: Int = 0,
     val adBlockSettings: FeedAdBlockSettings = FeedAdBlockSettings(),
 )
 
@@ -519,7 +509,6 @@ fun SettingsStore.toFeedFilterSettings(): FeedFilterSettings = FeedFilterSetting
     enableUserBlocking = getBoolean("enableUserBlocking", true),
     enableTopicBlocking = getBoolean("enableTopicBlocking", true),
     topicBlockingThreshold = getInt("topicBlockingThreshold", 1),
-    detailConcurrency = getInt("feedDetailConcurrency", 0),
     adBlockSettings = FeedAdBlockSettings(
         blockZhihuAdPlatform = getBoolean("blockZhihuAdPlatform", true),
         blockZhihuSchool = getBoolean("blockZhihuSchool", true),

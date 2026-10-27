@@ -44,6 +44,11 @@ class MixedHomeFeedViewModel :
     }
 
     override suspend fun fetchFeeds(environment: PaginationEnvironment) {
+        // 设置里是「每轮总共并发几页」，两个来源平分，避免设置 2 时实际发 4 个请求。
+        val total = environment.feedDisplaySettings().fetchConcurrency.coerceAtLeast(1)
+        val androidPages = if (total > 1) (total + 1) / 2 else 1
+        android.pageFetchConcurrency = androidPages
+        web.pageFetchConcurrency = (total - androidPages).coerceAtLeast(1)
         coroutineScope {
             listOf(
                 async { android.fetchFeeds(environment) },
