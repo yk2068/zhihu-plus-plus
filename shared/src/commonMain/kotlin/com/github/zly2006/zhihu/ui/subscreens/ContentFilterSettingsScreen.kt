@@ -425,11 +425,11 @@ fun ContentFilterSettingsScreen(
                         },
                         confirmButton = {
                             TextButton(onClick = {
-                                input.toIntOrNull()?.takeIf { it in 1..6 }?.let { value ->
+                                input.toIntOrNull()?.takeIf { it >= 1 }?.let { value ->
                                     fetchConcurrency.value = value
                                     settings.putInt("feedFetchConcurrency", value)
                                     showFetchConcurrencyDialog = false
-                                } ?: userMessages.showMessage("请输入 1 到 6 之间的整数")
+                                } ?: userMessages.showMessage("请输入不小于 1 的整数")
                             }) { Text("确定") }
                         },
                         dismissButton = {
