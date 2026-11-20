@@ -29,6 +29,8 @@ ktlint {
     android.set(true)
     outputToConsole.set(true)
     enableExperimentalRules.set(true)
+    // KSP 生成的 Room 实现代码不遵循手写风格，用 baseline 豁免
+    baseline.set(file("config/ktlint/baseline.xml"))
     filter {
         exclude("**/generated/**")
         exclude("**/build/**")

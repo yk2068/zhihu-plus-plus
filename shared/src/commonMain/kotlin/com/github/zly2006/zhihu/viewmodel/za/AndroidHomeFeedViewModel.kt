@@ -24,8 +24,8 @@ import com.github.zly2006.zhihu.data.Feed
 import com.github.zly2006.zhihu.data.FeedDisplayItem
 import com.github.zly2006.zhihu.data.Person
 import com.github.zly2006.zhihu.data.ZhihuJson
-import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.data.ZhihuPaging
+import com.github.zly2006.zhihu.data.target
 import com.github.zly2006.zhihu.data.toFeedDisplayItemNavDestinationJson
 import com.github.zly2006.zhihu.navigation.Article
 import com.github.zly2006.zhihu.navigation.ArticleType
@@ -80,21 +80,22 @@ class AndroidHomeFeedViewModel :
             // 推荐流的游标是 after_id/end_offset 的偏移，同一次会话里可以往前推，
             // 因此这里把后面几页的请求一起并发发出去，不用等上一页返回才知道下一页地址。
             val pages = coroutineScope {
-                (0 until concurrency).map { index ->
-                    async {
-                        val url = advanceRecommendCursor(
-                            baseUrl,
-                            index * (lastPageSize.takeIf { it > 0 } ?: RECOMMEND_PAGE_SIZE_FALLBACK),
-                        )
-                        try {
-                            fetchPage(environment, url, displaySettings)
-                        } catch (e: Exception) {
-                            // 并发多取的页失败就放弃这一页；首页失败仍按原来的方式抛出去。
-                            if (e is CancellationException || index == 0) throw e
-                            null
+                (0 until concurrency)
+                    .map { index ->
+                        async {
+                            val url = advanceRecommendCursor(
+                                baseUrl,
+                                index * (lastPageSize.takeIf { it > 0 } ?: RECOMMEND_PAGE_SIZE_FALLBACK),
+                            )
+                            try {
+                                fetchPage(environment, url, displaySettings)
+                            } catch (e: Exception) {
+                                // 并发多取的页失败就放弃这一页；首页失败仍按原来的方式抛出去。
+                                if (e is CancellationException || index == 0) throw e
+                                null
+                            }
                         }
-                    }
-                }.awaitAll()
+                    }.awaitAll()
             }.filterNotNull()
             if (pages.isEmpty()) {
                 throw IllegalStateException("No data found in response")

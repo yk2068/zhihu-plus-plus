@@ -34,8 +34,16 @@ internal const val RECOMMEND_PAGE_SIZE_FALLBACK = 10
  */
 internal fun advanceRecommendCursor(url: String, byItems: Int): String {
     if (byItems <= 0) return url
-    val after = AFTER_ID_REGEX.find(url)?.groupValues?.get(2)?.toIntOrNull() ?: return url
-    val end = END_OFFSET_REGEX.find(url)?.groupValues?.get(2)?.toIntOrNull() ?: after
+    val after = AFTER_ID_REGEX
+        .find(url)
+        ?.groupValues
+        ?.get(2)
+        ?.toIntOrNull() ?: return url
+    val end = END_OFFSET_REGEX
+        .find(url)
+        ?.groupValues
+        ?.get(2)
+        ?.toIntOrNull() ?: after
     return AFTER_ID_REGEX.replace(
         END_OFFSET_REGEX.replace(url) { match ->
             match.groupValues[1] + (end + byItems).toString()

@@ -184,21 +184,22 @@ class HomeFeedViewModel :
             // 于是把后面几页一起并发请求，而不是等上一页返回后再取下一页。
             val baseUrl = resolvePageUrl()
             val pages = coroutineScope {
-                (0 until concurrency).map { index ->
-                    async {
-                        val url = advanceRecommendCursor(
-                            baseUrl,
-                            index * (lastPageSize.takeIf { it > 0 } ?: RECOMMEND_PAGE_SIZE_FALLBACK),
-                        )
-                        try {
-                            fetchPage(environment, url)
-                        } catch (e: Exception) {
-                            // 并发多取的页失败就放弃这一页；首页失败仍按原来的方式抛出去。
-                            if (e is CancellationException || index == 0) throw e
-                            null
+                (0 until concurrency)
+                    .map { index ->
+                        async {
+                            val url = advanceRecommendCursor(
+                                baseUrl,
+                                index * (lastPageSize.takeIf { it > 0 } ?: RECOMMEND_PAGE_SIZE_FALLBACK),
+                            )
+                            try {
+                                fetchPage(environment, url)
+                            } catch (e: Exception) {
+                                // 并发多取的页失败就放弃这一页；首页失败仍按原来的方式抛出去。
+                                if (e is CancellationException || index == 0) throw e
+                                null
+                            }
                         }
-                    }
-                }.awaitAll()
+                    }.awaitAll()
             }.filterNotNull()
             if (pages.isEmpty()) {
                 throw RuntimeException("您可能已被风控，请重新登录。", Exception("cause: no $.data"))
